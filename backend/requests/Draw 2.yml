@@ -1,0 +1,29 @@
+info:
+  name: Draw 2
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: http://localhost:8000/meals/elo
+  body:
+    type: json
+    data: |-
+      {
+          "winner": {
+              "d_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "name": "Scrod"
+          },
+          "loser": {
+              "d_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+              "name": "Cheese"
+          },
+          "draw": true
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
