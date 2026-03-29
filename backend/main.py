@@ -1,12 +1,13 @@
 import os
-from typing import Annotated
+from uuid import UUID
+from typing import Annotated, List, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 
-from backend.calculate_elo import EloBody, CalculateElo
+from backend.calculate_elo import CalculateElo, EloBody, EloUpdateResponse
 from backend.helpers import get_random_meals_from_db, RandomMealsResponse
 
 load_dotenv()  # Load environment variables from .env file
@@ -36,13 +37,16 @@ def health():
 	return {"status": "ok"}
 
 
-@app.patch("/meals/elo", status_code=200)
+@app.patch("/meals/elo", status_code=200, response_model=EloUpdateResponse)
 async def update_elo(
     request: EloBody,
     db_session: Annotated[AsyncSession, Depends(request_db_session)]
-):
+) -> EloUpdateResponse:
 	try:
-		await CalculateElo(db_session=db_session).calculate_elo(request=request)
+		winner_new_elo, loser_new_elo = await CalculateElo(db_session=db_session).calculate_elo(
+			request=request
+		)
+		return EloUpdateResponse(winner_new_elo=winner_new_elo, loser_new_elo=loser_new_elo)
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))
 	except Exception as e:
@@ -50,10 +54,32 @@ async def update_elo(
 
 @app.get("/meals/random", status_code=200)
 async def get_random_meals(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)]
+    db_session: Annotated[AsyncSession, Depends(request_db_session)],
+	count: str = Query(
+		default="2",
+		pattern="^[1-2]$",
+		description="2 = two random meals. 1 = one random meal (optional exclusions via dish_name+dining_hall_id and/or exclude_names+exclude_dining_hall_ids).",
+	),
+	dish_name: Optional[str] = Query(
+		default=None,
+		description="With dining_hall_id, excludes one dish when count=1 (legacy). Ignored when count=2.",
+	),
+	dining_hall_id: Optional[UUID] = Query(
+		default=None,
+		description="With dish_name, excludes one dish when count=1 (legacy). Ignored when count=2.",
+	),
+	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids; exclude multiple dishes when count=1.")] = None,
+	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length as exclude_names.")] = None,
 ) -> RandomMealsResponse:
 	try:
-		response = await get_random_meals_from_db(db_session=db_session)
+		response = await get_random_meals_from_db(
+			db_session=db_session,
+			count=int(count),
+			dish_name=dish_name,
+			dining_hall_id=dining_hall_id,
+			exclude_names=exclude_names,
+			exclude_dining_hall_ids=exclude_dining_hall_ids,
+		)
 		return response
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))

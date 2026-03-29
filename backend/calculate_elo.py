@@ -3,13 +3,18 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from database.dining_halls import DiningHalls
 from database.food import Food
 
+
 class DishBody(BaseModel):
-	d_id: UUID
+	model_config = ConfigDict(populate_by_name=True)
+
+	dining_hall_id: UUID = Field(
+		validation_alias=AliasChoices("dining_hall_id", "d_id"),
+		description="Dining hall UUID; accepts legacy key `d_id` in JSON.",
+	)
 	name: str
 
 
@@ -17,6 +22,11 @@ class EloBody(BaseModel):
 	winner: DishBody
 	loser: DishBody
 	draw: bool
+
+
+class EloUpdateResponse(BaseModel):
+	winner_new_elo: float
+	loser_new_elo: float
 
 	
 class CalculateElo:
@@ -32,16 +42,17 @@ class CalculateElo:
 		return 1.0 / (1.0 + math.pow(10, (a - b) / 400.0))
 
 		
-	async def calculate_elo(self, request: EloBody) -> None:
+	async def calculate_elo(self, request: EloBody) -> tuple[float, float]:
 		"""
 		Calculates new ELO for the winning dish and the losing dish.
+		Returns (winner_new_elo, loser_new_elo).
 		"""
 
 		# K-factor; how much to adjust the elo by; can be adjusted
 		outcome = 0.5 if request.draw else 1.0
 
-		loser_elo = await self.get_elo(request.loser.name, request.loser.d_id)
-		winner_elo = await self.get_elo(request.winner.name, request.winner.d_id)
+		loser_elo = await self.get_elo(request.loser.name, request.loser.dining_hall_id)
+		winner_elo = await self.get_elo(request.winner.name, request.winner.dining_hall_id)
 
 		probability_winner = self.calculate_probability(loser_elo, winner_elo)
 		probability_loser = self.calculate_probability(winner_elo, loser_elo)
@@ -49,8 +60,10 @@ class CalculateElo:
 		winner_new_elo = winner_elo + self.k * (outcome - probability_winner)
 		loser_new_elo = loser_elo + self.k * ((1.0 - outcome) - probability_loser)
 
-		await self.update_elo(request.winner.name, request.winner.d_id, winner_new_elo)
-		await self.update_elo(request.loser.name, request.loser.d_id, loser_new_elo)
+		await self.update_elo(request.winner.name, request.winner.dining_hall_id, winner_new_elo)
+		await self.update_elo(request.loser.name, request.loser.dining_hall_id, loser_new_elo)
+
+		return winner_new_elo, loser_new_elo
 
 
 	async def update_elo(self, name: str, d_id: UUID, new_elo: float) -> None:
