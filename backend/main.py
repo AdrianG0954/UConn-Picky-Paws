@@ -7,7 +7,7 @@ from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 
 from backend.calculate_elo import EloBody, CalculateElo
-from backend.helpers import get_random_meals_from_db, RandomMealsResponse
+from backend.helpers import get_random_meals_from_db, RandomMealsResponse, handle_get_elo
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -54,6 +54,22 @@ async def get_random_meals(
 ) -> RandomMealsResponse:
 	try:
 		response = await get_random_meals_from_db(db_session=db_session)
+		return response
+	except ValueError as ve:
+		raise HTTPException(status_code=400, detail=str(ve))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/meals/elo", status_code=200)
+async def get_elo(
+    db_session: Annotated[AsyncSession, Depends(request_db_session)],
+    limit: int = 10,
+    offset: int = 0,
+    dining_hall: str = "Global",
+):
+	try:
+		response = await handle_get_elo(db_session, limit, offset, dining_hall)
 		return response
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))
