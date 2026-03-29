@@ -14,6 +14,28 @@ class DishInfo(BaseModel):
 class RandomMealsResponse(BaseModel):
 	meals: list[DishInfo]
 
+async def handle_get_elo(
+    db_session: AsyncSession,
+    limit: int,
+    offset: int, 
+    dining_hall: str ,
+        ):
+
+    stmt = (
+            select(Food)
+            .order_by(Food.elo_rating.desc())
+            .limit(limit)
+            .offset(offset)
+            )
+
+    if dining_hall != 'Global':
+        stmt = stmt.where(Food.dining_hall_id == dining_hall)
+    
+    res = await db_session.execute(stmt)
+    entries = res.scalars().all()
+
+    return entries
+
 
 async def get_random_meals_from_db(db_session: AsyncSession) -> RandomMealsResponse:
 	"""
@@ -35,5 +57,6 @@ async def get_random_meals_from_db(db_session: AsyncSession) -> RandomMealsRespo
 			) for entry in entries
 		]
 	)
+
 
 	
