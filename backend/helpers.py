@@ -1,11 +1,14 @@
+from typing import Any
+from pydantic import BaseModel
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+
 from database.food import Food
-from pydantic import BaseModel
 
 class DishInfo(BaseModel):
 	name: str
-	nutrition_info: dict
+	nutrition_info: dict[str, Any]
 	elo_rating: float
 
 class RandomMealsResponse(BaseModel):
@@ -14,7 +17,7 @@ class RandomMealsResponse(BaseModel):
 
 async def get_random_meals_from_db(db_session: AsyncSession) -> RandomMealsResponse:
 	"""
-	Gets a random meal from the database.
+	Gets two random meal from the database.
 	"""
 	stmt = select(Food).where(Food.elo_rating.isnot(None)).order_by(func.random()).limit(2)
 
