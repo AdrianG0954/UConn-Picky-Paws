@@ -16,7 +16,12 @@ config = context.config
 
 # Set the database URL from environment variables
 # Use sync URL for Alembic (psycopg2)
-database_url = os.getenv("DATABASE_URL", "")
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is not set or empty; "
+        "cannot run Alembic migrations."
+    )
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
