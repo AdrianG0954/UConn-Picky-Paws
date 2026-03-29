@@ -1,7 +1,7 @@
 info:
   name: Draw 2
   type: http
-  seq: 5
+  seq: 4
 
 http:
   method: PATCH
