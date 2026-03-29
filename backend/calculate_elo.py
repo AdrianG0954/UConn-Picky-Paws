@@ -83,15 +83,13 @@ class CalculateElo:
 			)
 
 
-	async def get_food(self, name: str, d_id: UUID) -> Food:
+	async def get_elo(self, name: str, dining_hall_id: UUID) -> Food:
 		"""
-		Fetches a dish from the database.
-	    """
-		stmt = select(Food).where(Food.dining_hall_id == d_id, Food.name == name)
+		Fetches the Elo rating for a dish from the database.
+		"""
+		stmt = select(Food.elo_rating).where(Food.dining_hall_id == dining_hall_id, Food.name == name)
 		res = await self.db_session.execute(stmt)
-		entry = res.scalar_one_or_none()
-
-		if entry is None:
-			raise ValueError(f"Food '{name}' not found in dining hall with ID {d_id}.")
-
-		return entry
+		elo = res.scalar_one_or_none()
+		if elo is None:
+			raise ValueError(f"Elo rating not found for '{name}' in dining hall with ID {dining_hall_id}.")
+		return elo
