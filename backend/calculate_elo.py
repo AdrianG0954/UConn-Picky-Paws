@@ -2,8 +2,10 @@ import math
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select, update
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
 
 from database.food import Food
 
@@ -46,6 +48,7 @@ class CalculateElo:
 		"""
 		Calculates new ELO for the winning dish and the losing dish.
 		Returns (winner_new_elo, loser_new_elo).
+
 		"""
 
 		# K-factor; how much to adjust the elo by; can be adjusted
@@ -66,26 +69,23 @@ class CalculateElo:
 		return winner_new_elo, loser_new_elo
 
 
-	async def update_elo(self, name: str, d_id: UUID, new_elo: float) -> None:
+	async def update_elo(self, food: Food, new_elo: float) -> None:
 		"""
 		Updates the Elo rating for a dish in the database.
 		"""
-		stmt = (
-			update(Food)
-		  	.where(Food.dining_hall_id == d_id, Food.name == name)
-			.values(elo_rating=new_elo)
-		)
-		
 		try:
-			await self.db_session.execute(stmt)
+			food.elo_rating = new_elo
 			await self.db_session.flush()
 		except Exception as e:
-			raise RuntimeError(f"Failed to update Elo rating for '{name}' in dining hall with ID {d_id}: {str(e)}")
+			raise RuntimeError(
+				f"Failed to update Elo rating for '{food.name}' in dining hall with ID "
+				f"{food.dining_hall_id}: {str(e)}"
+			)
 
 
-	async def get_elo(self, name: str, d_id: UUID) -> float:
+	async def get_food(self, name: str, d_id: UUID) -> Food:
 		"""
-		Fetches the current Elo rating for a dish from the database.
+		Fetches a dish from the database.
 	    """
 		stmt = select(Food).where(Food.dining_hall_id == d_id, Food.name == name)
 		res = await self.db_session.execute(stmt)
@@ -93,5 +93,5 @@ class CalculateElo:
 
 		if entry is None:
 			raise ValueError(f"Food '{name}' not found in dining hall with ID {d_id}.")
-       
-		return entry.elo_rating
+
+		return entry

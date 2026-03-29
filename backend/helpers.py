@@ -41,6 +41,9 @@ def _merge_exclusions(
 			out.append(pair)
 	return out
 
+class PagesResponse(BaseModel):
+    page_count: int
+
 class DishInfo(BaseModel):
 	dish_name: str
 	dining_hall_id: UUID
@@ -50,6 +53,28 @@ class DishInfo(BaseModel):
 
 class RandomMealsResponse(BaseModel):
 	meals: list[DishInfo]
+
+async def handle_get_elo(
+    db_session: AsyncSession,
+    limit: int,
+    offset: int, 
+    dining_hall: str ,
+        ):
+
+    stmt = (
+            select(Food)
+            .order_by(Food.elo_rating.desc())
+            .limit(limit)
+            .offset(offset)
+            )
+
+    if dining_hall != 'Global':
+        stmt = stmt.where(Food.dining_hall_id == dining_hall)
+    
+    res = await db_session.execute(stmt)
+    entries = res.scalars().all()
+
+    return entries
 
 
 async def get_random_meals_from_db(
@@ -97,3 +122,14 @@ async def get_random_meals_from_db(
 			) for food, dining_hall in entries
 		]
 	)
+
+async def handle_get_pagination(db_session: AsyncSession, limit: int) -> PagesResponse:
+    """
+    Gets two random meal from the database.
+    """
+    stmt = select(func.count("*")).select_from(Food)
+    res = await db_session.execute(stmt)
+    count = res.scalar_one()
+    pages = math.ceil(count / limit)
+
+    return PagesResponse(page_count=pages)
