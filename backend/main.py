@@ -1,20 +1,19 @@
 import os
-from typing import Annotated
+from uuid import UUID
+from typing import Annotated, List, Optional
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Request, WebSocket
-
-from backend.ws import ConnectionManager, handle_leaderboard_websocket
+from fastapi import FastAPI, Depends, Query
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 
-from backend.calculate_elo import EloBody, CalculateElo
-from backend.helpers import handle_get_pagination, get_random_meals_from_db, RandomMealsResponse, handle_get_elo
+from backend.calculate_elo import CalculateElo, EloBody, EloUpdateResponse
+from backend.helpers import get_random_meals_from_db, RandomMealsResponse
 
 load_dotenv()  # Load environment variables from .env file
 
 app = FastAPI()
-app.state.connection_manager = ConnectionManager()
+# app.state.connection_manager = ConnectionManager()
 
 # per-request database session
 _engine = create_async_engine(os.getenv("ASYNC_DATABASE_URL"))
@@ -39,33 +38,16 @@ def health():
 	return {"status": "ok"}
 
 
-@app.patch("/meals/elo", status_code=200)
+@app.patch("/meals/elo", status_code=200, response_model=EloUpdateResponse)
 async def update_elo(
     request: EloBody,
-    app_request: Request,
     db_session: Annotated[AsyncSession, Depends(request_db_session)]
-):
+) -> EloUpdateResponse:
 	try:
-		updated_foods = await CalculateElo(db_session=db_session).calculate_elo(request=request)
-		await db_session.commit()
-
-		manager = app_request.app.state.connection_manager
-		published_foods: set[tuple[str, str]] = set()
-		for food in updated_foods:
-			food_key = (str(food["dining_hall_id"]), food["name"])
-			if food_key in published_foods:
-				continue
-
-			await manager.publish_food_update(
-				dining_hall_id=food["dining_hall_id"],
-				name=food["name"],
-				payload={
-					"dining_hall_id": str(food["dining_hall_id"]),
-					"name": food["name"],
-					"elo_rating": food["elo_rating"],
-				},
-			)
-			published_foods.add(food_key)
+		winner_new_elo, loser_new_elo = await CalculateElo(db_session=db_session).calculate_elo(
+			request=request
+		)
+		return EloUpdateResponse(winner_new_elo=winner_new_elo, loser_new_elo=loser_new_elo)
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))
 	except Exception as e:
@@ -73,10 +55,32 @@ async def update_elo(
 
 @app.get("/meals/random", status_code=200)
 async def get_random_meals(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)]
+    db_session: Annotated[AsyncSession, Depends(request_db_session)],
+	count: str = Query(
+		default="2",
+		pattern="^[1-2]$",
+		description="2 = two random meals. 1 = one random meal (optional exclusions via dish_name+dining_hall_id and/or exclude_names+exclude_dining_hall_ids).",
+	),
+	dish_name: Optional[str] = Query(
+		default=None,
+		description="With dining_hall_id, excludes one dish when count=1 (legacy). Ignored when count=2.",
+	),
+	dining_hall_id: Optional[UUID] = Query(
+		default=None,
+		description="With dish_name, excludes one dish when count=1 (legacy). Ignored when count=2.",
+	),
+	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids; exclude multiple dishes when count=1.")] = None,
+	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length as exclude_names.")] = None,
 ) -> RandomMealsResponse:
 	try:
-		response = await get_random_meals_from_db(db_session=db_session)
+		response = await get_random_meals_from_db(
+			db_session=db_session,
+			count=int(count),
+			dish_name=dish_name,
+			dining_hall_id=dining_hall_id,
+			exclude_names=exclude_names,
+			exclude_dining_hall_ids=exclude_dining_hall_ids,
+		)
 		return response
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))
@@ -84,36 +88,36 @@ async def get_random_meals(
 		raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/meals/elo", status_code=200)
-async def get_elo(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)],
-    limit: int = 10,
-    offset: int = 0,
-    dining_hall: str = "Global",
-):
-	try:
-		response = await handle_get_elo(db_session, limit, offset, dining_hall)
-		return response
-	except ValueError as ve:
-		raise HTTPException(status_code=400, detail=str(ve))
-	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+# @app.get("/meals/elo", status_code=200)
+# async def get_elo(
+#     db_session: Annotated[AsyncSession, Depends(request_db_session)],
+#     limit: int = 10,
+#     offset: int = 0,
+#     dining_hall: str = "Global",
+# ):
+# 	try:
+# 		response = await handle_get_elo(db_session, limit, offset, dining_hall)
+# 		return response
+# 	except ValueError as ve:
+# 		raise HTTPException(status_code=400, detail=str(ve))
+# 	except Exception as e:
+# 		raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/meals/pagination", status_code=200)
-async def get_pagination(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)],
-    limit: int = 10,
-):
-	try:
-		response = await handle_get_pagination(db_session, limit)
-		return response
-	except ValueError as ve:
-		raise HTTPException(status_code=400, detail=str(ve))
-	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+# @app.get("/meals/pagination", status_code=200)
+# async def get_pagination(
+#     db_session: Annotated[AsyncSession, Depends(request_db_session)],
+#     limit: int = 10,
+# ):
+# 	try:
+# 		response = await handle_get_pagination(db_session, limit)
+# 		return response
+# 	except ValueError as ve:
+# 		raise HTTPException(status_code=400, detail=str(ve))
+# 	except Exception as e:
+# 		raise HTTPException(status_code=500, detail=str(e))
 
-@app.websocket("/ws/leaderboard/{client_id}")
-async def websocket_leaderboard(websocket: WebSocket, client_id: int):
-    manager = websocket.app.state.connection_manager
-    return await handle_leaderboard_websocket(websocket, client_id, manager)
+# @app.websocket("/ws/leaderboard/{client_id}")
+# async def websocket_leaderboard(websocket: WebSocket, client_id: int):
+#     manager = websocket.app.state.connection_manager
+#     return await handle_leaderboard_websocket(websocket, client_id, manager)
