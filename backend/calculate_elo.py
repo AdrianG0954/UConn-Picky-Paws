@@ -69,21 +69,17 @@ class CalculateElo:
 		return winner_new_elo, loser_new_elo
 
 
-	async def update_elo(self, food: Food, new_elo: float) -> None:
+	async def update_elo(self, name: str, dining_hall_id: UUID, new_elo: float) -> None:
 		"""
 		Updates the Elo rating for a dish in the database.
 		"""
 		try:
-			food.elo_rating = new_elo
-			await self.db_session.flush()
+			stmt = update(Food).where(Food.dining_hall_id == dining_hall_id, Food.name == name).values(elo_rating=new_elo)
+			await self.db_session.execute(stmt)
 		except Exception as e:
-			raise RuntimeError(
-				f"Failed to update Elo rating for '{food.name}' in dining hall with ID "
-				f"{food.dining_hall_id}: {str(e)}"
-			)
+			raise RuntimeError(f"Failed to update Elo rating for '{name}' in dining hall with ID {dining_hall_id}: {str(e)}")
 
-
-	async def get_elo(self, name: str, dining_hall_id: UUID) -> Food:
+	async def get_elo(self, name: str, dining_hall_id: UUID) -> float:
 		"""
 		Fetches the Elo rating for a dish from the database.
 		"""
