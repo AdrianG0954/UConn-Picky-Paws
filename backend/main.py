@@ -13,7 +13,7 @@ from backend.helpers import get_random_meals_from_db, RandomMealsResponse
 load_dotenv()  # Load environment variables from .env file
 
 app = FastAPI()
-app.state.connection_manager = ConnectionManager()
+# app.state.connection_manager = ConnectionManager()
 
 # per-request database session
 _engine = create_async_engine(os.getenv("ASYNC_DATABASE_URL"))
@@ -41,7 +41,6 @@ def health():
 @app.patch("/meals/elo", status_code=200, response_model=EloUpdateResponse)
 async def update_elo(
     request: EloBody,
-    app_request: Request,
     db_session: Annotated[AsyncSession, Depends(request_db_session)]
 ) -> EloUpdateResponse:
 	try:
@@ -89,36 +88,36 @@ async def get_random_meals(
 		raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/meals/elo", status_code=200)
-async def get_elo(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)],
-    limit: int = 10,
-    offset: int = 0,
-    dining_hall: str = "Global",
-):
-	try:
-		response = await handle_get_elo(db_session, limit, offset, dining_hall)
-		return response
-	except ValueError as ve:
-		raise HTTPException(status_code=400, detail=str(ve))
-	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+# @app.get("/meals/elo", status_code=200)
+# async def get_elo(
+#     db_session: Annotated[AsyncSession, Depends(request_db_session)],
+#     limit: int = 10,
+#     offset: int = 0,
+#     dining_hall: str = "Global",
+# ):
+# 	try:
+# 		response = await handle_get_elo(db_session, limit, offset, dining_hall)
+# 		return response
+# 	except ValueError as ve:
+# 		raise HTTPException(status_code=400, detail=str(ve))
+# 	except Exception as e:
+# 		raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/meals/pagination", status_code=200)
-async def get_pagination(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)],
-    limit: int = 10,
-):
-	try:
-		response = await handle_get_pagination(db_session, limit)
-		return response
-	except ValueError as ve:
-		raise HTTPException(status_code=400, detail=str(ve))
-	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+# @app.get("/meals/pagination", status_code=200)
+# async def get_pagination(
+#     db_session: Annotated[AsyncSession, Depends(request_db_session)],
+#     limit: int = 10,
+# ):
+# 	try:
+# 		response = await handle_get_pagination(db_session, limit)
+# 		return response
+# 	except ValueError as ve:
+# 		raise HTTPException(status_code=400, detail=str(ve))
+# 	except Exception as e:
+# 		raise HTTPException(status_code=500, detail=str(e))
 
-@app.websocket("/ws/leaderboard/{client_id}")
-async def websocket_leaderboard(websocket: WebSocket, client_id: int):
-    manager = websocket.app.state.connection_manager
-    return await handle_leaderboard_websocket(websocket, client_id, manager)
+# @app.websocket("/ws/leaderboard/{client_id}")
+# async def websocket_leaderboard(websocket: WebSocket, client_id: int):
+#     manager = websocket.app.state.connection_manager
+#     return await handle_leaderboard_websocket(websocket, client_id, manager)
