@@ -5,7 +5,7 @@ info:
 
 http:
   method: PATCH
-  url: http://localhost:8000/elo
+  url: http://localhost:8000/meals/elo
   body:
     type: json
     data: |-
