@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.base import Base
-from database.Dining_Halls import DiningHalls
+from database.dining_halls import DiningHalls
 
 class Food(Base):
     __tablename__ = "food"

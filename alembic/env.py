@@ -33,7 +33,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from database.base import Base
 # Import all models so they're registered with Base.metadata
-import database.Dining_Halls  # noqa: F401
+import database.dining_halls  # noqa: F401
 import database.food  # noqa: F401
 
 target_metadata = Base.metadata
