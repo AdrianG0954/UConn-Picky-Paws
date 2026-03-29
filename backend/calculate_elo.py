@@ -2,10 +2,9 @@ import math
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 from pydantic import BaseModel
 
-from database.dining_halls import DiningHalls
 from database.food import Food
 
 class DishBody(BaseModel):
@@ -32,16 +31,20 @@ class CalculateElo:
 		return 1.0 / (1.0 + math.pow(10, (a - b) / 400.0))
 
 		
-	async def calculate_elo(self, request: EloBody) -> None:
+	async def calculate_elo(self, request: EloBody) -> list[dict]:
 		"""
-		Calculates new ELO for the winning dish and the losing dish.
+		Calculates new ELO for the winning dish and the losing dish and
+		returns the updated payloads for downstream publishing.
 		"""
 
 		# K-factor; how much to adjust the elo by; can be adjusted
 		outcome = 0.5 if request.draw else 1.0
 
-		loser_elo = await self.get_elo(request.loser.name, request.loser.d_id)
-		winner_elo = await self.get_elo(request.winner.name, request.winner.d_id)
+		loser_food = await self.get_food(request.loser.name, request.loser.d_id)
+		winner_food = await self.get_food(request.winner.name, request.winner.d_id)
+
+		loser_elo = loser_food.elo_rating
+		winner_elo = winner_food.elo_rating
 
 		probability_winner = self.calculate_probability(loser_elo, winner_elo)
 		probability_loser = self.calculate_probability(winner_elo, loser_elo)
@@ -49,30 +52,40 @@ class CalculateElo:
 		winner_new_elo = winner_elo + self.k * (outcome - probability_winner)
 		loser_new_elo = loser_elo + self.k * ((1.0 - outcome) - probability_loser)
 
-		await self.update_elo(request.winner.name, request.winner.d_id, winner_new_elo)
-		await self.update_elo(request.loser.name, request.loser.d_id, loser_new_elo)
+		await self.update_elo(winner_food, winner_new_elo)
+		await self.update_elo(loser_food, loser_new_elo)
+
+		return [
+			{
+				"dining_hall_id": winner_food.dining_hall_id,
+				"name": winner_food.name,
+				"elo_rating": winner_food.elo_rating,
+			},
+			{
+				"dining_hall_id": loser_food.dining_hall_id,
+				"name": loser_food.name,
+				"elo_rating": loser_food.elo_rating,
+			},
+		]
 
 
-	async def update_elo(self, name: str, d_id: UUID, new_elo: float) -> None:
+	async def update_elo(self, food: Food, new_elo: float) -> None:
 		"""
 		Updates the Elo rating for a dish in the database.
 		"""
-		stmt = (
-			update(Food)
-		  	.where(Food.dining_hall_id == d_id, Food.name == name)
-			.values(elo_rating=new_elo)
-		)
-		
 		try:
-			await self.db_session.execute(stmt)
+			food.elo_rating = new_elo
 			await self.db_session.flush()
 		except Exception as e:
-			raise RuntimeError(f"Failed to update Elo rating for '{name}' in dining hall with ID {d_id}: {str(e)}")
+			raise RuntimeError(
+				f"Failed to update Elo rating for '{food.name}' in dining hall with ID "
+				f"{food.dining_hall_id}: {str(e)}"
+			)
 
 
-	async def get_elo(self, name: str, d_id: UUID) -> float:
+	async def get_food(self, name: str, d_id: UUID) -> Food:
 		"""
-		Fetches the current Elo rating for a dish from the database.
+		Fetches a dish from the database.
 	    """
 		stmt = select(Food).where(Food.dining_hall_id == d_id, Food.name == name)
 		res = await self.db_session.execute(stmt)
@@ -80,5 +93,5 @@ class CalculateElo:
 
 		if entry is None:
 			raise ValueError(f"Food '{name}' not found in dining hall with ID {d_id}.")
-       
-		return entry.elo_rating
+
+		return entry
