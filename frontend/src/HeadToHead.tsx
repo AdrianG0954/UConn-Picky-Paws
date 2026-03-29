@@ -1,122 +1,169 @@
-import { useCallback, useEffect, useState } from 'react'
-import { fetchRandomMeals, patchMealElo } from './api'
-import { DishCard } from './DishCard'
-import { NutritionModal } from './NutritionModal'
-import type { DishInfo } from './types'
+import { useCallback, useEffect, useState } from "react";
+import { fetchRandomMeals, patchMealElo } from "./api";
+import { DishCard } from "./DishCard";
+import { NutritionModal } from "./NutritionModal";
+import type { DishInfo } from "./types";
+import boneImg from "./assets/paw.png";
+import huskyImg from "./assets/Husky-PNG-Photo.png";
 
-type Pair = [DishInfo, DishInfo]
+type Pair = [DishInfo, DishInfo];
 
-/** Chevron points right by default; rotations: up = neutral, toward card 0 / card 1 when selected. */
-function PairSelectionArrow({ selectedIndex }: { selectedIndex: 0 | 1 | null }) {
-  const rotationClass =
+const ELO_LOCK_IN_HOLD_MS = 1500;
+const ELO_CANT_DECIDE_HOLD_MS = 1500;
+
+type EloLockInState = {
+  winnerSlot: 0 | 1;
+  winnerFrom: number;
+  winnerTo: number;
+  loserFrom: number;
+  loserTo: number;
+};
+
+/**
+ * Static husky art; bone rotates toward the selected card (same mapping as the old chevron).
+ * Bone asset should point right in its file; adjust with constant if your art faces another direction.
+ */
+function PairSelectionArrow({
+  selectedIndex,
+}: {
+  selectedIndex: 0 | 1 | null;
+}) {
+  const boneRotationClass =
     selectedIndex === null
-      ? '-rotate-90'
+      ? "-rotate-90"
       : selectedIndex === 0
-        ? '-rotate-90 md:rotate-180'
-        : 'rotate-90 md:rotate-0'
+        ? "-rotate-90 md:rotate-180"
+        : "rotate-90 md:rotate-0";
 
   return (
     <div
-      className="flex shrink-0 items-center justify-center py-4 md:min-w-[4.5rem] md:self-stretch md:py-0 lg:min-w-[5.5rem]"
+      className="flex shrink-0 flex-col items-center justify-center gap-3 py-4 md:min-w-[6rem] md:self-stretch md:gap-4 md:py-0 lg:min-w-[7rem]"
       aria-hidden
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={`h-14 w-14 text-violet-600 transition-transform duration-300 ease-out dark:text-violet-400 md:h-20 md:w-20 lg:h-24 lg:w-24 ${rotationClass}`}
-      >
-        <path d="M9 5l7 7-7 7" />
-      </svg>
+      <img
+        src={huskyImg}
+        alt=""
+        draggable={false}
+        className="h-24 w-auto max-w-[min(100%,10rem)] select-none object-contain md:h-28 lg:h-32"
+      />
+      <img
+        src={boneImg}
+        alt=""
+        draggable={false}
+        className={`h-28 w-28 origin-center select-none object-contain transition-transform duration-300 ease-out ${boneRotationClass}`}
+      />
     </div>
-  )
+  );
 }
 
 export function HeadToHead() {
-  const [pair, setPair] = useState<Pair | null>(null)
-  const [selectedIndex, setSelectedIndex] = useState<0 | 1 | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [nutritionDish, setNutritionDish] = useState<DishInfo | null>(null)
+  const [pair, setPair] = useState<Pair | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<0 | 1 | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nutritionDish, setNutritionDish] = useState<DishInfo | null>(null);
+  /** After “Can’t decide”: brief ELO reveal before swapping pair. */
+  const [cantDecideElo, setCantDecideElo] = useState(false);
+  /** After lock-in PATCH: animate ELOs, then fetch replacement meal. */
+  const [eloLockIn, setEloLockIn] = useState<EloLockInState | null>(null);
+
+  const showEloOnCards = cantDecideElo || eloLockIn !== null;
 
   const loadInitialPair = useCallback(async () => {
-    setError(null)
-    setBusy(true)
+    setError(null);
+    setBusy(true);
     try {
-      const meals = await fetchRandomMeals(2)
-      if (meals.length !== 2) throw new Error('Expected two meals from the server.')
-      setPair([meals[0], meals[1]])
-      setSelectedIndex(null)
+      const meals = await fetchRandomMeals(2);
+      if (meals.length !== 2)
+        throw new Error("Expected two meals from the server.");
+      setPair([meals[0], meals[1]]);
+      setSelectedIndex(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load dishes.')
+      setError(e instanceof Error ? e.message : "Failed to load dishes.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    void loadInitialPair()
-  }, [loadInitialPair])
+    void loadInitialPair();
+  }, [loadInitialPair]);
 
   const handleCantDecide = async () => {
-    setError(null)
-    setBusy(true)
+    setError(null);
+    setBusy(true);
     try {
-      const meals = await fetchRandomMeals(2)
-      if (meals.length !== 2) throw new Error('Expected two meals from the server.')
-      setPair([meals[0], meals[1]])
-      setSelectedIndex(null)
+      setCantDecideElo(true);
+      await new Promise((r) => setTimeout(r, ELO_CANT_DECIDE_HOLD_MS));
+      const meals = await fetchRandomMeals(2);
+      if (meals.length !== 2)
+        throw new Error("Expected two meals from the server.");
+      setPair([meals[0], meals[1]]);
+      setSelectedIndex(null);
+      setCantDecideElo(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load new pair.')
+      setCantDecideElo(false);
+      setError(e instanceof Error ? e.message : "Failed to load new pair.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   /** Winner keeps their slot; loser is replaced; PATCH updates winner ELO on the board. */
   const handleLockIn = async () => {
-    if (!pair || selectedIndex === null) return
-    const winnerSlot = selectedIndex
-    const loserSlot: 0 | 1 = winnerSlot === 0 ? 1 : 0
-    const winner = pair[winnerSlot]
-    const loser = pair[loserSlot]
+    if (!pair || selectedIndex === null) return;
+    const winnerSlot = selectedIndex;
+    const loserSlot: 0 | 1 = winnerSlot === 0 ? 1 : 0;
+    const winner = pair[winnerSlot];
+    const loser = pair[loserSlot];
 
-    setError(null)
-    setBusy(true)
+    setError(null);
+    setBusy(true);
     try {
-      const { winner_new_elo } = await patchMealElo(winner, loser, false)
-      const meals = await fetchRandomMeals(1, [winner, loser])
-      if (meals.length !== 1) throw new Error('Expected one replacement meal.')
-      const next: Pair = [...pair]
-      next[winnerSlot] = { ...winner, elo_rating: winner_new_elo }
-      next[loserSlot] = meals[0]
-      setPair(next)
-      setSelectedIndex(null)
+      const { winner_new_elo, loser_new_elo } = await patchMealElo(
+        winner,
+        loser,
+        false,
+      );
+      setEloLockIn({
+        winnerSlot,
+        winnerFrom: winner.elo_rating,
+        winnerTo: winner_new_elo,
+        loserFrom: loser.elo_rating,
+        loserTo: loser_new_elo,
+      });
+      await new Promise((r) => setTimeout(r, ELO_LOCK_IN_HOLD_MS));
+      const meals = await fetchRandomMeals(1, [winner, loser]);
+      if (meals.length !== 1) throw new Error("Expected one replacement meal.");
+      const next: Pair = [...pair];
+      next[winnerSlot] = { ...winner, elo_rating: winner_new_elo };
+      next[loserSlot] = meals[0];
+      setPair(next);
+      setEloLockIn(null);
+      setSelectedIndex(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not lock in this pick.')
+      setEloLockIn(null);
+      setError(e instanceof Error ? e.message : "Could not lock in this pick.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   return (
     <>
       <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
         <header className="mb-10 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-uconn-navy md:text-4xl">
             Picky Paws
           </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Rate your favorite dining hall food (WIP).
+          <p className="mt-2 text-zinc-600">
+            Rank your favorite UConn Dining Halls and their food!
           </p>
         </header>
 
         {error ? (
           <div
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
             role="alert"
           >
             {error}
@@ -136,6 +183,22 @@ export function HeadToHead() {
                 disabled={busy}
                 onSelect={() => setSelectedIndex(0)}
                 onShowNutrition={() => setNutritionDish(pair[0])}
+                showElo={showEloOnCards}
+                eloMotion={
+                  eloLockIn
+                    ? eloLockIn.winnerSlot === 0
+                      ? { from: eloLockIn.winnerFrom, to: eloLockIn.winnerTo }
+                      : { from: eloLockIn.loserFrom, to: eloLockIn.loserTo }
+                    : undefined
+                }
+                eloFadeIn={cantDecideElo && !eloLockIn}
+                outcomeGlow={
+                  eloLockIn
+                    ? eloLockIn.winnerSlot === 0
+                      ? "winner"
+                      : "loser"
+                    : undefined
+                }
               />
               <PairSelectionArrow selectedIndex={selectedIndex} />
               <DishCard
@@ -144,6 +207,22 @@ export function HeadToHead() {
                 disabled={busy}
                 onSelect={() => setSelectedIndex(1)}
                 onShowNutrition={() => setNutritionDish(pair[1])}
+                showElo={showEloOnCards}
+                eloMotion={
+                  eloLockIn
+                    ? eloLockIn.winnerSlot === 1
+                      ? { from: eloLockIn.winnerFrom, to: eloLockIn.winnerTo }
+                      : { from: eloLockIn.loserFrom, to: eloLockIn.loserTo }
+                    : undefined
+                }
+                eloFadeIn={cantDecideElo && !eloLockIn}
+                outcomeGlow={
+                  eloLockIn
+                    ? eloLockIn.winnerSlot === 1
+                      ? "winner"
+                      : "loser"
+                    : undefined
+                }
               />
             </div>
 
@@ -152,15 +231,15 @@ export function HeadToHead() {
                 type="button"
                 disabled={busy || selectedIndex === null}
                 onClick={() => void handleLockIn()}
-                className="min-w-0 rounded-xl bg-violet-600 px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400"
+                className="min-w-0 rounded-xl bg-uconn-navy px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-uconn-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? 'Working…' : 'Lock in'}
+                {busy ? "Working…" : "Lock in"}
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void handleCantDecide()}
-                className="min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-4 text-lg font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                className="min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-4 text-lg font-medium text-zinc-800 shadow-sm hover:border-uconn-navy/30 hover:bg-zinc-50 disabled:opacity-50"
               >
                 Can&apos;t decide
               </button>
@@ -169,7 +248,10 @@ export function HeadToHead() {
         ) : null}
       </div>
 
-      <NutritionModal dish={nutritionDish} onClose={() => setNutritionDish(null)} />
+      <NutritionModal
+        dish={nutritionDish}
+        onClose={() => setNutritionDish(null)}
+      />
     </>
-  )
+  );
 }

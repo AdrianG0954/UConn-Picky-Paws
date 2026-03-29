@@ -1,5 +1,14 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+
+/* UConn-inspired palette: white / gray / navy (light UI only; no dark mode). */
+@theme {
+  --color-uconn-navy: #003b71;
+  --color-uconn-navy-dark: #002347;
+  --color-uconn-navy-muted: #1e4d7a;
+}
 
 body {
   margin: 0;
+  background-color: #f4f6f8;
+  color: #18181b;
 }
