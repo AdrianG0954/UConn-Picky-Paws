@@ -14,3 +14,5 @@ greenlet==3.3.2
 
 # Utilities
 python-dotenv==1.2.1
+
+websockets==16.0

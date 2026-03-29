@@ -2,7 +2,9 @@ import os
 from typing import Annotated
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI, Request, WebSocket
+
+from backend.ws import ConnectionManager, handle_leaderboard_websocket
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 
@@ -12,6 +14,7 @@ from backend.helpers import handle_get_pagination, get_random_meals_from_db, Ran
 load_dotenv()  # Load environment variables from .env file
 
 app = FastAPI()
+app.state.connection_manager = ConnectionManager()
 
 # per-request database session
 _engine = create_async_engine(os.getenv("ASYNC_DATABASE_URL"))
@@ -39,10 +42,30 @@ def health():
 @app.patch("/meals/elo", status_code=200)
 async def update_elo(
     request: EloBody,
+    app_request: Request,
     db_session: Annotated[AsyncSession, Depends(request_db_session)]
 ):
 	try:
-		await CalculateElo(db_session=db_session).calculate_elo(request=request)
+		updated_foods = await CalculateElo(db_session=db_session).calculate_elo(request=request)
+		await db_session.commit()
+
+		manager = app_request.app.state.connection_manager
+		published_foods: set[tuple[str, str]] = set()
+		for food in updated_foods:
+			food_key = (str(food["dining_hall_id"]), food["name"])
+			if food_key in published_foods:
+				continue
+
+			await manager.publish_food_update(
+				dining_hall_id=food["dining_hall_id"],
+				name=food["name"],
+				payload={
+					"dining_hall_id": str(food["dining_hall_id"]),
+					"name": food["name"],
+					"elo_rating": food["elo_rating"],
+				},
+			)
+			published_foods.add(food_key)
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))
 	except Exception as e:
@@ -83,9 +106,14 @@ async def get_pagination(
     limit: int = 10,
 ):
 	try:
-		response = await get_pagination(db_session, limit)
+		response = await handle_get_pagination(db_session, limit)
 		return response
 	except ValueError as ve:
 		raise HTTPException(status_code=400, detail=str(ve))
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
+
+@app.websocket("/ws/leaderboard/{client_id}")
+async def websocket_leaderboard(websocket: WebSocket, client_id: int):
+    manager = websocket.app.state.connection_manager
+    return await handle_leaderboard_websocket(websocket, client_id, manager)
