@@ -61,7 +61,7 @@ async def update_elo(
         winner_new_elo, loser_new_elo = await CalculateElo(db_session=db_session).calculate_elo(
             request=request
         )
-        await db_session.commit()
+        await db_session.flush()
 
         manager = app_request.app.state.connection_manager
         affected_dining_hall_ids = {
