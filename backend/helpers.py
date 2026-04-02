@@ -72,7 +72,7 @@ async def get_leaderboard_entries(
     dining_hall_id: UUID | None = None,
 ) -> list[LeaderboardEntry]:
     
-    # default statment for global leaderboard
+    # Base statement for the global leaderboard query
     stmt = (
         select(Food, DiningHalls)
         .join(DiningHalls, Food.dining_hall_id == DiningHalls.id)
