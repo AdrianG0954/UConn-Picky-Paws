@@ -1,7 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { HeadToHead } from './HeadToHead'
-import { Layout } from './Layout'
-import { LeaderboardPage } from './LeaderboardPage'
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 
 function App() {
   return (
