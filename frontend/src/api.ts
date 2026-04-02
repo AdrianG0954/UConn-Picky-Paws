@@ -1,10 +1,5 @@
-import type {
-  DiningHallOption,
-  DishInfo,
-  EloPatchBody,
-  EloUpdateResponse,
-  RandomMealsResponse,
-} from './types'
+import type { DiningHallOption, DishInfo, RandomMealsResponse } from './types/meals'
+import type { EloPatchBody, EloUpdateResponse } from './types/elo'
 
 const API_PREFIX = '/api'
 
