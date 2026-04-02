@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DishInfo } from "./types/meals";
+import type { DishInfo } from "../types/meals";
 
 const ELO_ANIM_MS = 880;
 

@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { SiteHeader } from "./SiteHeader";
+import { SiteHeader } from "./components/SiteHeader";
 
 export function Layout() {
   return (

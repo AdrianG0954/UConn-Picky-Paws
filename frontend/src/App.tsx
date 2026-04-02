@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { Layout } from "./Layout";
-import { HeadToHead } from "./HeadToHead";
+import { HeadToHead } from "./pages/HeadToHeadPage";
 
 function App() {
   return (
