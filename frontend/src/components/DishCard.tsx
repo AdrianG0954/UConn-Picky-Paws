@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import type { DishInfo } from "../types/meals";
+import { useEffect, useRef, useState } from 'react';
+import type { DishInfo } from '../types/meals';
 
 const ELO_ANIM_MS = 880;
 
@@ -16,7 +16,7 @@ type Props = {
   /** Fade in the ELO row (e.g. “Can’t decide” reveal). Ignored while `eloMotion` is set. */
   eloFadeIn?: boolean;
   /** Lock-in ELO animation: glow the rating number (green = winner, red = loser). */
-  outcomeGlow?: "winner" | "loser";
+  outcomeGlow?: 'winner' | 'loser';
 };
 
 export function DishCard({
@@ -72,28 +72,28 @@ export function DishCard({
   const eloRow = showElo ? (
     <p
       className={[
-        "mt-8 text-lg font-bold text-zinc-700 md:text-xl",
+        'mt-8 text-lg font-bold text-zinc-700 md:text-xl',
         eloMotion
-          ? ""
+          ? ''
           : eloFadeIn
             ? `transition-all duration-500 ease-out ${
                 fadeEntered
-                  ? "translate-y-0 opacity-100"
-                  : "translate-y-2 opacity-0"
+                  ? 'translate-y-0 opacity-100'
+                  : 'translate-y-2 opacity-0'
               }`
-            : "",
-      ].join(" ")}
+            : '',
+      ].join(' ')}
     >
-      ELO:{" "}
+      ELO:{' '}
       <span
         className={[
-          "inline-block rounded-md px-1 tabular-nums text-2xl font-semibold md:text-2xl",
-          outcomeGlow === "winner"
-            ? "text-emerald-400"
-            : outcomeGlow === "loser"
-              ? "text-red-500"
-              : "text-uconn-navy",
-        ].join(" ")}
+          'inline-block rounded-md px-1 tabular-nums text-2xl font-semibold md:text-2xl',
+          outcomeGlow === 'winner'
+            ? 'text-emerald-400'
+            : outcomeGlow === 'loser'
+              ? 'text-red-500'
+              : 'text-uconn-navy',
+        ].join(' ')}
       >
         {formatElo(displayElo)}
       </span>
@@ -103,35 +103,35 @@ export function DishCard({
   return (
     <article
       className={[
-        "flex min-h-[22rem] flex-col rounded-3xl border border-zinc-200 bg-white p-8 text-left shadow-md transition-shadow md:min-h-[26rem] md:p-10 lg:min-h-[28rem]",
-        selected ? "border-uconn-navy ring-4 ring-uconn-navy/25" : "",
+        'flex min-h-[22rem] flex-col rounded-3xl border border-zinc-200 bg-white p-8 text-left shadow-md transition-shadow md:min-h-[26rem] md:p-10 lg:min-h-[28rem]',
+        selected ? 'border-uconn-navy ring-4 ring-uconn-navy/25' : '',
         disabled
-          ? "cursor-not-allowed opacity-60"
-          : "cursor-pointer hover:border-uconn-navy/35",
-      ].join(" ")}
+          ? 'cursor-not-allowed opacity-60'
+          : 'cursor-pointer hover:border-uconn-navy/35',
+      ].join(' ')}
     >
       <button
-        type="button"
+        type='button'
         disabled={disabled}
         onClick={onSelect}
-        className="grow text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-uconn-navy focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        className='grow text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-uconn-navy focus-visible:ring-offset-2 focus-visible:ring-offset-white'
       >
-        <h3 className="text-2xl font-bold leading-tight text-zinc-900 md:text-2xl lg:text-3xl">
+        <h3 className='text-2xl font-bold leading-tight text-zinc-900 md:text-2xl lg:text-3xl'>
           {dish.dish_name}
         </h3>
-        <p className="mt-3 text-base font-bold text-zinc-600 md:text-2xl">
+        <p className='mt-3 text-base font-bold text-zinc-600 md:text-2xl'>
           {dish.dining_hall_name}
         </p>
         {eloRow}
       </button>
       <button
-        type="button"
+        type='button'
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
           onShowNutrition();
         }}
-        className="mt-6 w-full rounded-xl border border-zinc-200 bg-zinc-50 py-4 text-base font-medium text-uconn-navy-muted hover:bg-zinc-100 disabled:opacity-50 md:text-lg"
+        className='mt-6 w-full rounded-xl border border-zinc-200 bg-zinc-50 py-4 text-base font-medium text-uconn-navy-muted hover:bg-zinc-100 disabled:opacity-50 md:text-lg'
       >
         Nutritional info
       </button>

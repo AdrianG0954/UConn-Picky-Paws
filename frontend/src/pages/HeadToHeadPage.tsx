@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchRandomMeals, patchMealElo } from "../api";
-import { DishCard } from "../components/DishCard";
-import { NutritionModal } from "../components/NutritionModal";
-import type { DishInfo } from "../types/meals";
-import boneImg from "../assets/paw.png";
-import huskyImg from "../assets/Husky-PNG-Photo.png";
+import { useCallback, useEffect, useState } from 'react';
+import { fetchRandomMeals, patchMealElo } from '../api';
+import { DishCard } from '../components/DishCard';
+import { NutritionModal } from '../components/NutritionModal';
+import type { DishInfo } from '../types/meals';
+import boneImg from '../assets/paw.png';
+import huskyImg from '../assets/Husky-PNG-Photo.png';
 
 type Pair = [DishInfo, DishInfo];
 
@@ -30,25 +30,25 @@ function PairSelectionArrow({
 }) {
   const boneRotationClass =
     selectedIndex === null
-      ? "-rotate-90"
+      ? '-rotate-90'
       : selectedIndex === 0
-        ? "-rotate-90 md:rotate-180"
-        : "rotate-90 md:rotate-0";
+        ? '-rotate-90 md:rotate-180'
+        : 'rotate-90 md:rotate-0';
 
   return (
     <div
-      className="flex shrink-0 flex-col items-center justify-center gap-3 py-4 md:min-w-[6rem] md:self-stretch md:gap-4 md:py-0 lg:min-w-[7rem]"
+      className='flex shrink-0 flex-col items-center justify-center gap-3 py-4 md:min-w-[6rem] md:self-stretch md:gap-4 md:py-0 lg:min-w-[7rem]'
       aria-hidden
     >
       <img
         src={huskyImg}
-        alt=""
+        alt=''
         draggable={false}
-        className="h-24 w-auto max-w-[min(100%,10rem)] select-none object-contain md:h-28 lg:h-32"
+        className='h-24 w-auto max-w-[min(100%,10rem)] select-none object-contain md:h-28 lg:h-32'
       />
       <img
         src={boneImg}
-        alt=""
+        alt=''
         draggable={false}
         className={`h-28 w-28 origin-center select-none object-contain transition-transform duration-300 ease-out ${boneRotationClass}`}
       />
@@ -75,11 +75,11 @@ export function HeadToHead() {
     try {
       const meals = await fetchRandomMeals(2);
       if (meals.length !== 2)
-        throw new Error("Expected two meals from the server.");
+        throw new Error('Expected two meals from the server.');
       setPair([meals[0], meals[1]]);
       setSelectedIndex(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load dishes.");
+      setError(e instanceof Error ? e.message : 'Failed to load dishes.');
     } finally {
       setBusy(false);
     }
@@ -97,13 +97,13 @@ export function HeadToHead() {
       await new Promise((r) => setTimeout(r, ELO_CANT_DECIDE_HOLD_MS));
       const meals = await fetchRandomMeals(2);
       if (meals.length !== 2)
-        throw new Error("Expected two meals from the server.");
+        throw new Error('Expected two meals from the server.');
       setPair([meals[0], meals[1]]);
       setSelectedIndex(null);
       setCantDecideElo(false);
     } catch (e) {
       setCantDecideElo(false);
-      setError(e instanceof Error ? e.message : "Failed to load new pair.");
+      setError(e instanceof Error ? e.message : 'Failed to load new pair.');
     } finally {
       setBusy(false);
     }
@@ -134,7 +134,7 @@ export function HeadToHead() {
       });
       await new Promise((r) => setTimeout(r, ELO_LOCK_IN_HOLD_MS));
       const meals = await fetchRandomMeals(1, [winner, loser]);
-      if (meals.length !== 1) throw new Error("Expected one replacement meal.");
+      if (meals.length !== 1) throw new Error('Expected one replacement meal.');
       const next: Pair = [...pair];
       next[winnerSlot] = { ...winner, elo_rating: winner_new_elo };
       next[loserSlot] = meals[0];
@@ -143,7 +143,7 @@ export function HeadToHead() {
       setSelectedIndex(null);
     } catch (e) {
       setEloLockIn(null);
-      setError(e instanceof Error ? e.message : "Could not lock in this pick.");
+      setError(e instanceof Error ? e.message : 'Could not lock in this pick.');
     } finally {
       setBusy(false);
     }
@@ -151,32 +151,32 @@ export function HeadToHead() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
-        <header className="mb-10 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-uconn-navy md:text-4xl">
+      <div className='mx-auto w-full max-w-6xl px-4 py-10 md:px-6'>
+        <header className='mb-10 text-center'>
+          <h1 className='text-3xl font-semibold tracking-tight text-uconn-navy md:text-4xl'>
             Picky Paws
           </h1>
-          <p className="mt-2 text-zinc-600">
+          <p className='mt-2 text-zinc-600'>
             Rank your favorite UConn Dining Halls and their food!
           </p>
         </header>
 
         {error ? (
           <div
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-            role="alert"
+            className='mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800'
+            role='alert'
           >
             {error}
           </div>
         ) : null}
 
         {!pair && !error ? (
-          <p className="text-center text-zinc-500">Loading dishes…</p>
+          <p className='text-center text-zinc-500'>Loading dishes…</p>
         ) : null}
 
         {pair ? (
           <>
-            <div className="mb-10 grid grid-cols-1 items-stretch gap-y-6 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 lg:gap-x-20">
+            <div className='mb-10 grid grid-cols-1 items-stretch gap-y-6 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 lg:gap-x-20'>
               <DishCard
                 dish={pair[0]}
                 selected={selectedIndex === 0}
@@ -195,8 +195,8 @@ export function HeadToHead() {
                 outcomeGlow={
                   eloLockIn
                     ? eloLockIn.winnerSlot === 0
-                      ? "winner"
-                      : "loser"
+                      ? 'winner'
+                      : 'loser'
                     : undefined
                 }
               />
@@ -219,27 +219,27 @@ export function HeadToHead() {
                 outcomeGlow={
                   eloLockIn
                     ? eloLockIn.winnerSlot === 1
-                      ? "winner"
-                      : "loser"
+                      ? 'winner'
+                      : 'loser'
                     : undefined
                 }
               />
             </div>
 
-            <div className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-4 md:gap-6">
+            <div className='mx-auto grid w-full max-w-2xl grid-cols-2 gap-4 md:gap-6'>
               <button
-                type="button"
+                type='button'
                 disabled={busy || selectedIndex === null}
                 onClick={() => void handleLockIn()}
-                className="min-w-0 rounded-xl bg-uconn-navy px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-uconn-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
+                className='min-w-0 rounded-xl bg-uconn-navy px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-uconn-navy-dark disabled:cursor-not-allowed disabled:opacity-50'
               >
-                {busy ? "Working…" : "Lock in"}
+                {busy ? 'Working…' : 'Lock in'}
               </button>
               <button
-                type="button"
+                type='button'
                 disabled={busy}
                 onClick={() => void handleCantDecide()}
-                className="min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-4 text-lg font-medium text-zinc-800 shadow-sm hover:border-uconn-navy/30 hover:bg-zinc-50 disabled:opacity-50"
+                className='min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-4 text-lg font-medium text-zinc-800 shadow-sm hover:border-uconn-navy/30 hover:bg-zinc-50 disabled:opacity-50'
               >
                 Can&apos;t decide
               </button>

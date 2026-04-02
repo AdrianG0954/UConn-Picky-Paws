@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 import type {
   ConnectionState,
   LeaderboardTab,
   LeaderboardEntry,
   LeaderboardErrorMessage,
   LeaderboardSnapshotMessage,
-} from "../types/leaderboard";
+} from '../types/leaderboard';
 
 function buildWebSocketUrl(path: string): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}${path}`;
 }
 
@@ -16,29 +16,29 @@ function buildWebSocketUrl(path: string): string {
 function isSnapshotMessage(
   message: unknown,
 ): message is LeaderboardSnapshotMessage {
-  if (!message || typeof message !== "object") return false;
+  if (!message || typeof message !== 'object') return false;
   const candidate = message as Record<string, unknown>;
-  if (candidate.type !== "leaderboard_snapshot") return false;
-  if (candidate.scope !== "global" && candidate.scope !== "dining_hall") {
+  if (candidate.type !== 'leaderboard_snapshot') return false;
+  if (candidate.scope !== 'global' && candidate.scope !== 'dining_hall') {
     return false;
   }
   return Array.isArray(candidate.entries);
 }
 
 function isErrorMessage(message: unknown): message is LeaderboardErrorMessage {
-  if (!message || typeof message !== "object") return false;
+  if (!message || typeof message !== 'object') return false;
   const candidate = message as Record<string, unknown>;
-  return candidate.type === "error" && typeof candidate.message === "string";
+  return candidate.type === 'error' && typeof candidate.message === 'string';
 }
 
 function buildSubscriptionMessage(tab: LeaderboardTab) {
-  if (tab.scope === "global") {
-    return { type: "subscribe_leaderboard", scope: "global" as const };
+  if (tab.scope === 'global') {
+    return { type: 'subscribe_leaderboard', scope: 'global' as const };
   }
 
   return {
-    type: "subscribe_leaderboard" as const,
-    scope: "dining_hall" as const,
+    type: 'subscribe_leaderboard' as const,
+    scope: 'dining_hall' as const,
     dining_hall_id: tab.diningHallId,
   };
 }
@@ -47,9 +47,9 @@ function snapshotMatchesTab(
   snapshot: LeaderboardSnapshotMessage,
   tab: LeaderboardTab,
 ): boolean {
-  if (tab.scope === "global") return snapshot.scope === "global";
+  if (tab.scope === 'global') return snapshot.scope === 'global';
   return (
-    snapshot.scope === "dining_hall" &&
+    snapshot.scope === 'dining_hall' &&
     snapshot.dining_hall_id === tab.diningHallId
   );
 }
@@ -66,7 +66,7 @@ export function useLeaderboardSocket(
 ): UseLeaderboardSocketResult {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [connectionState, setConnectionState] =
-    useState<ConnectionState>("connecting");
+    useState<ConnectionState>('connecting');
   const [loading, setLoading] = useState(true);
   const [socketError, setSocketError] = useState<string | null>(null);
 
@@ -123,15 +123,15 @@ export function useLeaderboardSocket(
       if (cancelled) return;
 
       setConnectionState((current) =>
-        current === "reconnecting" ? "reconnecting" : "connecting",
+        current === 'reconnecting' ? 'reconnecting' : 'connecting',
       );
-      const socket = new WebSocket(buildWebSocketUrl("/ws/leaderboard"));
+      const socket = new WebSocket(buildWebSocketUrl('/ws/leaderboard'));
       socketRef.current = socket;
 
       // These callbacks are exposed by the WebSocket object and are fired by the browser
       socket.onopen = () => {
         if (cancelled) return;
-        setConnectionState("connected");
+        setConnectionState('connected');
         setSocketError(null);
         socket.send(
           JSON.stringify(buildSubscriptionMessage(selectedTabRef.current)),
@@ -143,7 +143,7 @@ export function useLeaderboardSocket(
         try {
           message = JSON.parse(String(event.data));
         } catch {
-          setSocketError("Received an invalid websocket message.");
+          setSocketError('Received an invalid websocket message.');
           return;
         }
 
@@ -163,14 +163,14 @@ export function useLeaderboardSocket(
 
       socket.onerror = () => {
         if (cancelled) return;
-        setSocketError("Live updates are unavailable. Retrying...");
+        setSocketError('Live updates are unavailable. Retrying...');
       };
 
       socket.onclose = () => {
         if (cancelled) return;
         socketRef.current = null;
-        setConnectionState("reconnecting");
-        setSocketError("Live updates are unavailable. Retrying...");
+        setConnectionState('reconnecting');
+        setSocketError('Live updates are unavailable. Retrying...');
         scheduleReconnect();
       };
     }

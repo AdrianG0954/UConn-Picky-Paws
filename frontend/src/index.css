@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* UConn-inspired palette: white / gray / navy (light UI only; no dark mode). */
 @theme {
