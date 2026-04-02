@@ -1,4 +1,7 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
+import { Layout } from "./Layout";
+import { HeadToHead } from "./HeadToHead";
 
 function App() {
   return (
@@ -11,7 +14,7 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

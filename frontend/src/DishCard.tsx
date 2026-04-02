@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DishInfo } from "./types";
+import type { DishInfo } from "./types/meals";
 
 const ELO_ANIM_MS = 880;
 
@@ -104,9 +104,7 @@ export function DishCard({
     <article
       className={[
         "flex min-h-[22rem] flex-col rounded-3xl border border-zinc-200 bg-white p-8 text-left shadow-md transition-shadow md:min-h-[26rem] md:p-10 lg:min-h-[28rem]",
-        selected
-          ? "border-uconn-navy ring-4 ring-uconn-navy/25"
-          : "",
+        selected ? "border-uconn-navy ring-4 ring-uconn-navy/25" : "",
         disabled
           ? "cursor-not-allowed opacity-60"
           : "cursor-pointer hover:border-uconn-navy/35",

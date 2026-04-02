@@ -1,24 +1,24 @@
-import { useEffect } from 'react'
-import type { DishInfo } from './types'
+import { useEffect } from "react";
+import type { DishInfo } from "./types/meals";
 
 type Props = {
-  dish: DishInfo | null
-  onClose: () => void
-}
+  dish: DishInfo | null;
+  onClose: () => void;
+};
 
 export function NutritionModal({ dish, onClose }: Props) {
   useEffect(() => {
-    if (!dish) return
+    if (!dish) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [dish, onClose])
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [dish, onClose]);
 
-  if (!dish) return null
+  if (!dish) return null;
 
-  const entries = Object.entries(dish.nutrition_info)
+  const entries = Object.entries(dish.nutrition_info);
 
   return (
     <div
@@ -35,7 +35,10 @@ export function NutritionModal({ dish, onClose }: Props) {
       >
         <div className="mb-4 flex items-start justify-between gap-2">
           <div>
-            <h2 id="nutrition-title" className="text-lg font-semibold text-uconn-navy">
+            <h2
+              id="nutrition-title"
+              className="text-lg font-semibold text-uconn-navy"
+            >
               Nutrition — {dish.dish_name}
             </h2>
             <p className="text-sm text-zinc-500">{dish.dining_hall_name}</p>
@@ -67,11 +70,11 @@ export function NutritionModal({ dish, onClose }: Props) {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function formatNutritionValue(value: unknown): string {
-  if (value === null || value === undefined) return '—'
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
