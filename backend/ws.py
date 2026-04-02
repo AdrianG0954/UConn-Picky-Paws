@@ -1,109 +1,151 @@
 from collections import defaultdict
+from typing import Literal, TypeAlias
 from uuid import UUID
 
 from fastapi import WebSocket, WebSocketDisconnect
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-FoodKey = tuple[UUID, str]
+from backend.helpers import LeaderboardEntry, get_leaderboard_entries
+
+ScopeKind = Literal["global", "dining_hall"]
+LeaderboardScope: TypeAlias = tuple[ScopeKind, UUID | None]
+
+
+def global_scope() -> LeaderboardScope:
+    return ("global", None)
+
+
+def dining_hall_scope(dining_hall_id: UUID) -> LeaderboardScope:
+    return ("dining_hall", dining_hall_id)
 
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
-        self.subscriptions: dict[FoodKey, set[WebSocket]] = defaultdict(set)
+        self.scope_subscriptions: dict[LeaderboardScope, set[WebSocket]] = defaultdict(set)
+        self.websocket_scopes: dict[WebSocket, LeaderboardScope] = {}
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+        previous_scope = self.websocket_scopes.pop(websocket, None)
+        if previous_scope is None:
+            return
 
-        # Cleanup foods unsubscribed client was subscribed to
-        empty_keys: list[FoodKey] = []
-        for food_key, subscribers in self.subscriptions.items():
-            subscribers.discard(websocket)
-            if not subscribers:
-                empty_keys.append(food_key)
+        subscribers = self.scope_subscriptions.get(previous_scope)
+        if not subscribers:
+            return
 
-        for food_key in empty_keys:
-            del self.subscriptions[food_key]
+        subscribers.discard(websocket)
+        if not subscribers:
+            del self.scope_subscriptions[previous_scope]
 
-    def subscribe(self, websocket: WebSocket, foods: list[dict]) -> list[dict]:
-        subscribed_foods: list[dict] = []
+    def subscribe_leaderboard(
+        self,
+        websocket: WebSocket,
+        scope: LeaderboardScope,
+    ) -> LeaderboardScope:
+        self.disconnect(websocket)
+        self.scope_subscriptions[scope].add(websocket)
+        self.websocket_scopes[websocket] = scope
+        return scope
 
-        for food in foods:
-            dining_hall_id = UUID(food["dining_hall_id"])
-            name = food["name"].strip()
-            food_key = (dining_hall_id, name)
-            self.subscriptions[food_key].add(websocket)
-            subscribed_foods.append(
-                {
-                    "dining_hall_id": str(dining_hall_id),
-                    "name": name,
-                }
-            )
-
-        return subscribed_foods
+    def has_subscribers(self, scope: LeaderboardScope) -> bool:
+        return bool(self.scope_subscriptions.get(scope))
 
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         await websocket.send_json(message)
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+    async def publish_snapshot(
+        self,
+        scope: LeaderboardScope,
+        entries: list[LeaderboardEntry],
+    ):
+        subscribers = set(self.scope_subscriptions.get(scope, set()))
+        if not subscribers:
+            return
 
-    async def publish_food_update(self, dining_hall_id: UUID, name: str, payload: dict):
-        food_key = (dining_hall_id, name)
+        message = _build_snapshot_message(scope, entries)
         failed_websockets: list[WebSocket] = []
 
-        for websocket in set(self.subscriptions.get(food_key, set())):
+        for websocket in subscribers:
             try:
-                await websocket.send_json(
-                    {
-                        "type": "food_elo_update",
-                        "food": payload,
-                    }
-                )
+                await websocket.send_json(message)
             except (RuntimeError, WebSocketDisconnect):
                 failed_websockets.append(websocket)
 
         for websocket in failed_websockets:
             self.disconnect(websocket)
 
-# Cleans up and validates food subscriptions
-def _validate_food_list(message: dict) -> list[dict]:
-    foods = message.get("foods")
-    if not isinstance(foods, list) or not foods:
-        raise ValueError("'foods' must be a non-empty array")
 
-    normalized_foods: list[dict] = []
-    for food in foods:
-        if not isinstance(food, dict):
-            raise ValueError("Each item in 'foods' must be an object")
+def _build_snapshot_message(
+    scope: LeaderboardScope,
+    entries: list[LeaderboardEntry],
+) -> dict:
+    scope_kind, dining_hall_id = scope
+    message: dict[str, object] = {
+        "type": "leaderboard_snapshot",
+        "scope": scope_kind,
+        "entries": [entry.model_dump(mode="json") for entry in entries],
+    }
+    if scope_kind == "dining_hall" and dining_hall_id is not None:
+        message["dining_hall_id"] = str(dining_hall_id)
+    return message
 
-        dining_hall_id = food.get("dining_hall_id")
-        name = food.get("name")
 
+def _validate_leaderboard_scope(message: dict) -> LeaderboardScope:
+    scope = message.get("scope")
+    if scope == "global":
+        return global_scope()
+    if scope == "dining_hall":
+        dining_hall_id = message.get("dining_hall_id")
         if not isinstance(dining_hall_id, str) or not dining_hall_id.strip():
-            raise ValueError("Each food must include a non-empty 'dining_hall_id'")
-        if not isinstance(name, str) or not name.strip():
-            raise ValueError("Each food must include a non-empty 'name'")
+            raise ValueError(
+                "A non-empty 'dining_hall_id' is required when scope is 'dining_hall'."
+            )
+        try:
+            return dining_hall_scope(UUID(dining_hall_id))
+        except ValueError as exc:
+            raise ValueError("'dining_hall_id' must be a valid UUID.") from exc
+    raise ValueError("Unsupported scope. Use 'global' or 'dining_hall'.")
 
-        normalized_foods.append(
-            {
-                "dining_hall_id": dining_hall_id,
-                "name": name,
-            }
-        )
 
-    return normalized_foods
+async def _get_scope_entries(
+    db_session: AsyncSession,
+    scope: LeaderboardScope,
+) -> list[LeaderboardEntry]:
+    scope_kind, dining_hall_id = scope
+    if scope_kind == "global":
+        return await get_leaderboard_entries(db_session=db_session, limit=10)
+    return await get_leaderboard_entries(
+        db_session=db_session,
+        limit=10,
+        dining_hall_id=dining_hall_id,
+    )
+
+
+async def publish_leaderboard_snapshots(
+    db_session: AsyncSession,
+    manager: ConnectionManager,
+    affected_dining_hall_ids: set[UUID],
+):
+    scopes: list[LeaderboardScope] = [global_scope()]
+    scopes.extend(
+        dining_hall_scope(dining_hall_id)
+        for dining_hall_id in sorted(affected_dining_hall_ids, key=str)
+    )
+
+    for scope in scopes:
+        if not manager.has_subscribers(scope):
+            continue
+        entries = await _get_scope_entries(db_session, scope)
+        await manager.publish_snapshot(scope, entries)
 
 
 async def handle_leaderboard_websocket(
     websocket: WebSocket,
-    client_id: int,
     manager: ConnectionManager,
+    db_session_maker: async_sessionmaker[AsyncSession],
 ):
     await manager.connect(websocket)
     try:
@@ -112,27 +154,25 @@ async def handle_leaderboard_websocket(
                 message = await websocket.receive_json()
                 message_type = message.get("type")
 
-                match message_type:
-                    case "subscribe":
-                        foods = _validate_food_list(message)
-                        subscribed_foods = manager.subscribe(websocket, foods)
-                        await manager.send_personal_message(
-                            {
-                                "type": "subscribed",
-                                "client_id": client_id,
-                                "foods": subscribed_foods,
-                            },
-                            websocket,
-                        )
-                    # case "unsubscribe"
-                    case _:
-                        await manager.send_personal_message(
-                            {
-                                "type": "error",
-                                "message": "Unsupported message type. Use 'subscribe'.",
-                            },
-                            websocket,
-                        )
+                if message_type == "subscribe_leaderboard":
+                    scope = _validate_leaderboard_scope(message)
+                    manager.subscribe_leaderboard(websocket, scope)
+                    async with db_session_maker() as db_session:
+                        entries = await _get_scope_entries(db_session, scope)
+                    await manager.send_personal_message(
+                        _build_snapshot_message(scope, entries),
+                        websocket,
+                    )
+                else:
+                    await manager.send_personal_message(
+                        {
+                            "type": "error",
+                            "message": (
+                                "Unsupported message type. Use 'subscribe_leaderboard'."
+                            ),
+                        },
+                        websocket,
+                    )
             except ValueError as exc:
                 await manager.send_personal_message(
                     {
@@ -142,6 +182,7 @@ async def handle_leaderboard_websocket(
                     websocket,
                 )
     except WebSocketDisconnect:
+        # handle exception but do nothing. just don't care about this in our logs
         pass
     finally:
         manager.disconnect(websocket)

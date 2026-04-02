@@ -1,3 +1,4 @@
+import math
 from typing import Any, Optional
 from uuid import UUID
 from pydantic import BaseModel
@@ -54,27 +55,53 @@ class DishInfo(BaseModel):
 class RandomMealsResponse(BaseModel):
 	meals: list[DishInfo]
 
-async def handle_get_elo(
+class DiningHallSummary(BaseModel):
+    id: UUID
+    name: str
+
+
+class LeaderboardEntry(BaseModel):
+    name: str
+    dining_hall_id: UUID
+    dining_hall_name: str
+    elo: float
+
+async def get_leaderboard_entries(
     db_session: AsyncSession,
-    limit: int,
-    offset: int, 
-    dining_hall: str ,
-        ):
-
-    stmt = (
-            select(Food)
-            .order_by(Food.elo_rating.desc())
-            .limit(limit)
-            .offset(offset)
-            )
-
-    if dining_hall != 'Global':
-        stmt = stmt.where(Food.dining_hall_id == dining_hall)
+    limit: int = 10,
+    dining_hall_id: UUID | None = None,
+) -> list[LeaderboardEntry]:
     
+    # default statment for global leaderboard
+    stmt = (
+        select(Food, DiningHalls)
+        .join(DiningHalls, Food.dining_hall_id == DiningHalls.id)
+        .order_by(Food.elo_rating.desc(), Food.name.asc())
+        .limit(limit)
+    )
+
+    if dining_hall_id is not None:
+        stmt = stmt.where(Food.dining_hall_id == dining_hall_id)
+
+    res = await db_session.execute(stmt)
+    entries = res.all()
+
+    return [
+        LeaderboardEntry(
+            name=food.name,
+            dining_hall_id=food.dining_hall_id,
+            dining_hall_name=dining_hall.name,
+            elo=food.elo_rating,
+        )
+        for food, dining_hall in entries
+    ]
+
+
+async def get_dining_halls(db_session: AsyncSession) -> list[DiningHallSummary]:
+    stmt = select(DiningHalls).order_by(DiningHalls.name.asc())
     res = await db_session.execute(stmt)
     entries = res.scalars().all()
-
-    return entries
+    return [DiningHallSummary(id=entry.id, name=entry.name) for entry in entries]
 
 
 async def get_random_meals_from_db(
