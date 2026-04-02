@@ -1,4 +1,5 @@
-import type { DishInfo, EloPatchBody, EloUpdateResponse, RandomMealsResponse } from './types'
+import type { DiningHallOption, DishInfo, RandomMealsResponse } from './types/meals'
+import type { EloPatchBody, EloUpdateResponse } from './types/elo'
 
 const API_PREFIX = '/api'
 
@@ -12,6 +13,12 @@ async function readError(res: Response): Promise<string> {
   } catch {
     return res.statusText
   }
+}
+
+export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
+  const res = await fetch(`${API_PREFIX}/dining-halls`)
+  if (!res.ok) throw new Error(await readError(res))
+  return (await res.json()) as DiningHallOption[]
 }
 
 /**
