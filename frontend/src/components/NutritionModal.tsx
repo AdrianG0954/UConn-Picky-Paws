@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { DishInfo } from "./types/meals";
+import type { DishInfo } from "../types/meals";
 
 type Props = {
   dish: DishInfo | null;

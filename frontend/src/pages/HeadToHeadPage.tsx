@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchRandomMeals, patchMealElo } from "./api";
-import { DishCard } from "./DishCard";
-import { NutritionModal } from "./NutritionModal";
-import type { DishInfo } from "./types/meals";
-import boneImg from "./assets/paw.png";
-import huskyImg from "./assets/Husky-PNG-Photo.png";
+import { fetchRandomMeals, patchMealElo } from "../api";
+import { DishCard } from "../components/DishCard";
+import { NutritionModal } from "../components/NutritionModal";
+import type { DishInfo } from "../types/meals";
+import boneImg from "../assets/paw.png";
+import huskyImg from "../assets/Husky-PNG-Photo.png";
 
 type Pair = [DishInfo, DishInfo];
 
