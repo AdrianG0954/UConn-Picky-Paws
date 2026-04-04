@@ -1,45 +1,26 @@
-import logging
-import os
 from uuid import UUID
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, Dict
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Query, Request, WebSocket
+from fastapi import Depends, Query, Request, WebSocket
 from fastapi.exceptions import HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.calculate_elo import CalculateElo, EloBody, EloUpdateResponse
+from backend.repository.dining_hall_repository import DiningHallSummary, DiningHallRepository
 from backend.helpers import (
-    DiningHallSummary,
     RandomMealsResponse,
-    get_dining_halls,
     get_random_meals_from_db,
 )
 from backend.ws import (
-    ConnectionManager,
     handle_leaderboard_websocket,
     publish_leaderboard_snapshots,
 )
+from backend.parse_dishes import ParseDishes, DiningHallEnum
+from backend.server import logger, app, request_db_session, _db_session_maker
 
 load_dotenv()  # Load environment variables from .env file
 
-logger = logging.getLogger(__name__)
-
-app = FastAPI()
-app.state.connection_manager = ConnectionManager()
-
-# per-request database session
-_engine = create_async_engine(os.getenv("ASYNC_DATABASE_URL"))
-_db_session_maker = async_sessionmaker(bind=_engine, expire_on_commit=False)
-async def request_db_session():
-    """Provide a transactional scope around a series of operations.""" 
-    async with _db_session_maker() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
 
 @app.get("/")
 def read_root():
@@ -94,27 +75,20 @@ async def get_random_meals(
 	count: str = Query(
 		default="2",
 		pattern="^[1-2]$",
-		description="2 = two random meals. 1 = one random meal (optional exclusions via dish_name+dining_hall_id and/or exclude_names+exclude_dining_hall_ids).",
+		description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids, exclude_meal_types).",
 	),
-	dish_name: Optional[str] = Query(
-		default=None,
-		description="With dining_hall_id, excludes one dish when count=1 (legacy). Ignored when count=2.",
-	),
-	dining_hall_id: Optional[UUID] = Query(
-		default=None,
-		description="With dish_name, excludes one dish when count=1 (legacy). Ignored when count=2.",
-	),
-	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids; exclude multiple dishes when count=1.")] = None,
-	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length as exclude_names.")] = None,
+	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids and exclude_meal_types when count=1.")] = None,
+	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names and exclude_meal_types; same length.")] = None,
+	exclude_meal_types: Annotated[Optional[List[str]], Query(description="Parallel to exclude_names; same length.")] = None,
 ) -> RandomMealsResponse:
+	"""Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
 	try:
 		response = await get_random_meals_from_db(
 			db_session=db_session,
 			count=int(count),
-			dish_name=dish_name,
-			dining_hall_id=dining_hall_id,
 			exclude_names=exclude_names,
 			exclude_dining_hall_ids=exclude_dining_hall_ids,
+			exclude_meal_types=exclude_meal_types,
 		)
 		return response
 	except ValueError as ve:
@@ -140,7 +114,7 @@ async def dining_halls(
     db_session: Annotated[AsyncSession, Depends(request_db_session)],
 ) -> list[DiningHallSummary]:
     try:
-        return await get_dining_halls(db_session)
+        return await DiningHallRepository(db_session).get_dining_halls()
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as exc:
@@ -150,3 +124,15 @@ async def dining_halls(
 async def websocket_leaderboard(websocket: WebSocket):
     manager = websocket.app.state.connection_manager
     return await handle_leaderboard_websocket(websocket, manager, _db_session_maker)
+
+@app.get("/meals/menu/{hall_name}", status_code=200)
+async def get_menu(
+    db_session: Annotated[AsyncSession, Depends(request_db_session)], 
+    hall_name: str,
+    dtdate: Optional[str] = Query(default=None, description="Optionally fetch a specific date's menu. Format: MM/DD/YYYY"),
+) -> Dict:
+    try:
+        hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
+        return await ParseDishes(db_session).get_dining_hall_menu(hall_info, dtdate)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error: {exc}")

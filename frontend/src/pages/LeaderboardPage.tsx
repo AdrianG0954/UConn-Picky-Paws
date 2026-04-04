@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchDiningHalls } from "../api";
 import { useLeaderboardSocket } from "../hooks/useLeaderboardSocket";
+import { formatEloForDisplay } from "../lib/eloDisplay";
 import type {
   DiningHallTab,
   LeaderboardTab,
@@ -205,7 +206,7 @@ export function LeaderboardPage() {
                   </span>
                   <span className="truncate">{entry.dining_hall_name}</span>
                   <span className="text-right font-semibold text-uconn-navy">
-                    {entry.elo.toFixed(1)}
+                    {formatEloForDisplay(entry.elo)}
                   </span>
                 </motion.div>
               ))}

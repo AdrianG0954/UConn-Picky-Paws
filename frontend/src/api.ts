@@ -1,7 +1,18 @@
 import type { DiningHallOption, DishInfo, RandomMealsResponse } from './types/meals'
 import type { EloPatchBody, EloUpdateResponse } from './types/elo'
 
+/** HTTP client for the FastAPI backend (Vite proxies `/api` to the server in dev). */
+
 const API_PREFIX = '/api'
+
+/** Maps a `DishInfo` from the UI to the PATCH /meals/elo dish object (backend `DishBody`). */
+function dishToEloPayload(dish: DishInfo): EloPatchBody['winner'] {
+  return {
+    name: dish.dish_name,
+    dining_hall_id: dish.dining_hall_id,
+    meal_type: dish.meal_type,
+  }
+}
 
 async function readError(res: Response): Promise<string> {
   try {
@@ -22,7 +33,7 @@ export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
 }
 
 /**
- * GET /meals/random — repeats exclude_names / exclude_dining_hall_ids per backend contract.
+ * GET /meals/random — repeats exclude_names, exclude_dining_hall_ids, exclude_meal_types per backend contract.
  */
 export async function fetchRandomMeals(
   count: 1 | 2,
@@ -33,6 +44,7 @@ export async function fetchRandomMeals(
     for (const d of excludePairs) {
       params.append('exclude_names', d.dish_name)
       params.append('exclude_dining_hall_ids', d.dining_hall_id)
+      params.append('exclude_meal_types', d.meal_type)
     }
   }
 
@@ -49,8 +61,8 @@ export async function patchMealElo(
   draw: boolean,
 ): Promise<EloUpdateResponse> {
   const body: EloPatchBody = {
-    winner: { name: winner.dish_name, dining_hall_id: winner.dining_hall_id },
-    loser: { name: loser.dish_name, dining_hall_id: loser.dining_hall_id },
+    winner: dishToEloPayload(winner),
+    loser: dishToEloPayload(loser),
     draw,
   }
 
