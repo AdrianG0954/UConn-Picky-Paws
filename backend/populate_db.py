@@ -29,7 +29,7 @@ async def populate_db(db_session: AsyncSession):
 
         # Make requests to the nutrition api for all days of the week
         # (testing so im doing today only)
-        # TODO: Optimize look to avoid N + 1 queries 
+        # TODO: Optimize lookups to avoid N + 1 queries 
         resp = await parse_dishes_service.get_dining_hall_menu(hall, dtdate=None) 
         for meal_type in resp["dishes"]:
             for dish in resp["dishes"][meal_type]:
