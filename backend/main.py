@@ -133,6 +133,17 @@ async def get_menu(
 ) -> Dict:
     try:
         hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
+    except KeyError:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Dining hall '{hall_name}' not found"
+        )
+    
+    try:
         return await ParseDishes(db_session).get_dining_hall_menu(hall_info, dtdate)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error: {exc}")
+        logger.error(f"Error fetching menu for {hall_name}: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail="Internal server error while fetching menu"
+        )

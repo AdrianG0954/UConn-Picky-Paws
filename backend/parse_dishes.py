@@ -46,12 +46,14 @@ class ParseDishes:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     "http://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
-                    params=params
+                    params=params,
+                    timeout=10.0
                 )
+                response.raise_for_status()  # Raise an exception for HTTP errors
 
         except httpx.HTTPError as e:
             logger.error(f"Error fetching dining hall menu for hall_id {hall_id}: {e}")
-            return {"status": 500, "food_items": []}
+            return {"dishes": {}}
 
         food_items = self.parse_food_items(response.text)
 

@@ -1,7 +1,4 @@
-export type DiningHallOption = {
-  id: string;
-  name: string;
-};
+export type { DiningHallOption } from "./meals";
 
 export type LeaderboardEntry = {
   name: string;

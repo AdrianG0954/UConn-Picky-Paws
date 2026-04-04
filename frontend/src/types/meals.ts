@@ -15,6 +15,7 @@ export type RandomMealsResponse = {
   meals: DishInfo[];
 };
 
+/** Shape of GET /dining-halls items; re-exported from `types/leaderboard.ts` for convenience. */
 export type DiningHallOption = {
   id: string;
   name: string;

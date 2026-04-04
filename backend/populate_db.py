@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.server import _db_session_maker
 from backend.parse_dishes import DiningHallEnum, ParseDishes
-from database.dining_halls import DiningHalls
 from database.dishes import Dishes
 from backend.repository.dining_hall_repository import DiningHallRepository
 
@@ -20,17 +19,19 @@ async def populate_db(db_session: AsyncSession):
     parse_dishes_service = ParseDishes(db_session)
 
     for hall in DiningHallEnum:
-        hall_entry = DiningHalls(
-            id=uuid4(),
-            req_id=hall.value, # id uconn uses to distinguish dining halls
-            name=hall.name.lower().replace("_", " ") # inserting normalized name
-        )
-        dining_hall_id = await dining_hall_repo.add_dining_hall(hall_entry)
+        normalized_name = hall.name.lower().replace("_", " ")
+        dining_hall_id = await dining_hall_repo.add_dining_hall(req_id=hall.value, name=normalized_name)
+        if dining_hall_id is None:
+            # fetch existing dining hall id
+            entry = await dining_hall_repo.get_dining_hall_by_name(normalized_name)
+            if entry is None:
+                raise ValueError(f"Dining hall '{normalized_name}' not found")
+            dining_hall_id = entry.id
 
-        # Make requests to the nutrition API for all days of the week
-        # (currently limited to today for testing)
+        # Make requests to the nutrition api for all days of the week
+        # (testing so im doing today only)
+        # TODO: Optimize look to avoid N + 1 queries 
         resp = await parse_dishes_service.get_dining_hall_menu(hall, dtdate=None) 
-
         for meal_type in resp["dishes"]:
             for dish in resp["dishes"][meal_type]:
                 dish_entry = Dishes(
