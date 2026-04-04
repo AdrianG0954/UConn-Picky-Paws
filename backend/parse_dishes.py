@@ -45,7 +45,7 @@ class ParseDishes:
             
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    "http://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
+                    "https://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
                     params=params,
                     timeout=10.0
                 )
