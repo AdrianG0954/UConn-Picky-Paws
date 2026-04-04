@@ -3,8 +3,8 @@ import { fetchRandomMeals, patchMealElo } from "../api";
 import { DishCard } from "../components/DishCard";
 import { NutritionModal } from "../components/NutritionModal";
 import type { DishInfo } from "../types/meals";
-import boneImg from "../assets/paw.png";
 import huskyImg from "../assets/Husky-PNG-Photo.png";
+import arrowImg from "../assets/arrow.png";
 
 type Pair = [DishInfo, DishInfo];
 
@@ -19,16 +19,12 @@ type EloLockInState = {
   loserTo: number;
 };
 
-/**
- * Static husky art; bone rotates toward the selected card (same mapping as the old chevron).
- * Bone asset should point right in its file; adjust with constant if your art faces another direction.
- */
 function PairSelectionArrow({
   selectedIndex,
 }: {
   selectedIndex: 0 | 1 | null;
 }) {
-  const boneRotationClass =
+  const arrowRotationClass =
     selectedIndex === null
       ? "-rotate-90"
       : selectedIndex === 0
@@ -37,21 +33,26 @@ function PairSelectionArrow({
 
   return (
     <div
-      className="flex shrink-0 flex-col items-center justify-center gap-3 py-4 md:min-w-[6rem] md:self-stretch md:gap-4 md:py-0 lg:min-w-[7rem]"
+      className="flex shrink-0 flex-col items-center justify-center py-4 md:min-w-[6rem] md:self-stretch md:py-0 lg:min-w-[7rem]"
       aria-hidden
     >
-      <img
-        src={huskyImg}
-        alt=""
-        draggable={false}
-        className="h-24 w-auto max-w-[min(100%,10rem)] select-none object-contain md:h-28 lg:h-32"
-      />
-      <img
-        src={boneImg}
-        alt=""
-        draggable={false}
-        className={`h-28 w-28 origin-center select-none object-contain transition-transform duration-300 ease-out ${boneRotationClass}`}
-      />
+      <div className="relative flex flex-col items-center">
+        <img
+          src={huskyImg}
+          alt=""
+          draggable={false}
+          className="relative z-10 h-[10.5rem] w-[10.5rem] select-none object-contain"
+        />
+        <img
+          src={arrowImg}
+          alt=""
+          draggable={false}
+          className={[
+            "relative z-0 -mt-0 h-24 w-24 origin-center select-none object-contain transition-transform duration-300 ease-out",
+            arrowRotationClass,
+          ].join(" ")}
+        />
+      </div>
     </div>
   );
 }
@@ -153,7 +154,7 @@ export function HeadToHead() {
     <>
       <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
         <header className="mb-10 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-uconn-navy md:text-4xl">
+          <h1 className="text-6xl font-semibold tracking-tight text-uconn-navy">
             Picky Paws
           </h1>
           <p className="mt-2 text-zinc-600">

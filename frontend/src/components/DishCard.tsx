@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatEloForDisplay } from "../lib/eloDisplay";
 import type { DishInfo } from "../types/meals";
 
 const ELO_ANIM_MS = 880;
@@ -95,7 +96,7 @@ export function DishCard({
               : "text-uconn-navy",
         ].join(" ")}
       >
-        {formatElo(displayElo)}
+        {formatEloForDisplay(displayElo)}
       </span>
     </p>
   ) : null;
@@ -137,8 +138,4 @@ export function DishCard({
       </button>
     </article>
   );
-}
-
-function formatElo(r: number): string {
-  return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }

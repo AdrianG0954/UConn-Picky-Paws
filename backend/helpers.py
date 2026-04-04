@@ -1,3 +1,6 @@
+"""
+Shared Pydantic response models and DB helpers for meals and leaderboard endpoints.
+"""
 import math
 from typing import Any, Optional
 from uuid import UUID
@@ -6,58 +9,51 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, tuple_
 
-from database.food import Food
+from database.dishes import Dishes
 from database.dining_halls import DiningHalls
 
 
 def _merge_exclusions(
-	dish_name: Optional[str],
-	dining_hall_id: Optional[UUID],
 	exclude_names: Optional[list[str]],
 	exclude_dining_hall_ids: Optional[list[UUID]],
-) -> list[tuple[str, UUID]]:
-	"""Build a deduplicated list of (name, dining_hall_id) pairs to exclude."""
-	exclusions: list[tuple[str, UUID]] = []
-	has_legacy = dish_name is not None or dining_hall_id is not None
-	if has_legacy:
-		if dish_name is None or dining_hall_id is None:
-			raise ValueError(
-				"dish_name and dining_hall_id must both be provided to exclude a dish, or omit both."
-			)
-		exclusions.append((dish_name, dining_hall_id))
-
+	exclude_meal_types: Optional[list[str]],
+) -> list[tuple[str, UUID, str]]:
+	"""
+	Build a unique list of (name, dining_hall_id, meal_type) triples to exclude.
+	"""
 	names = exclude_names or []
 	hall_ids = exclude_dining_hall_ids or []
-	if len(names) != len(hall_ids):
+	meal_types = exclude_meal_types or []
+	if not (len(names) == len(hall_ids) == len(meal_types)):
 		raise ValueError(
-			"exclude_names and exclude_dining_hall_ids must have the same length."
+			"exclude_names, exclude_dining_hall_ids, and exclude_meal_types must have the same length."
 		)
-	exclusions.extend(zip(names, hall_ids))
 
-	seen: set[tuple[str, UUID]] = set()
-	out: list[tuple[str, UUID]] = []
-	for pair in exclusions:
-		if pair not in seen:
-			seen.add(pair)
-			out.append(pair)
+	# return only the unique exclusions
+	seen: set[tuple[str, UUID, str]] = set()
+	out: list[tuple[str, UUID, str]] = []
+	for triple in zip(names, hall_ids, meal_types):
+		if triple not in seen:
+			seen.add(triple)
+			out.append(triple)
+
 	return out
 
 class PagesResponse(BaseModel):
     page_count: int
 
 class DishInfo(BaseModel):
+	"""One dish for JSON APIs; fields align with the ``dishes`` composite PK (hall, name, meal_type)."""
+
 	dish_name: str
 	dining_hall_id: UUID
 	dining_hall_name: str
+	meal_type: str
 	nutrition_info: dict[str, Any]
 	elo_rating: float
 
 class RandomMealsResponse(BaseModel):
 	meals: list[DishInfo]
-
-class DiningHallSummary(BaseModel):
-    id: UUID
-    name: str
 
 
 class LeaderboardEntry(BaseModel):
@@ -74,62 +70,58 @@ async def get_leaderboard_entries(
     
     # Base statement for the global leaderboard query
     stmt = (
-        select(Food, DiningHalls)
-        .join(DiningHalls, Food.dining_hall_id == DiningHalls.id)
-        .order_by(Food.elo_rating.desc(), Food.name.asc())
+        select(Dishes, DiningHalls)
+        .join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id)
+        .order_by(Dishes.elo_rating.desc(), Dishes.name.asc())
         .limit(limit)
     )
 
     if dining_hall_id is not None:
-        stmt = stmt.where(Food.dining_hall_id == dining_hall_id)
+        stmt = stmt.where(Dishes.dining_hall_id == dining_hall_id)
 
     res = await db_session.execute(stmt)
     entries = res.all()
 
     return [
         LeaderboardEntry(
-            name=food.name,
-            dining_hall_id=food.dining_hall_id,
+            name=dish.name,
+            dining_hall_id=dish.dining_hall_id,
             dining_hall_name=dining_hall.name,
-            elo=food.elo_rating,
+            elo=dish.elo_rating,
         )
-        for food, dining_hall in entries
+        for dish, dining_hall in entries
     ]
-
-
-async def get_dining_halls(db_session: AsyncSession) -> list[DiningHallSummary]:
-    stmt = select(DiningHalls).order_by(DiningHalls.name.asc())
-    res = await db_session.execute(stmt)
-    entries = res.scalars().all()
-    return [DiningHallSummary(id=entry.id, name=entry.name) for entry in entries]
-
 
 async def get_random_meals_from_db(
 	db_session: AsyncSession,
 	count: int,
-	dish_name: Optional[str] = None,
-	dining_hall_id: Optional[UUID] = None,
 	exclude_names: Optional[list[str]] = None,
 	exclude_dining_hall_ids: Optional[list[UUID]] = None,
+	exclude_meal_types: Optional[list[str]] = None,
 ) -> RandomMealsResponse:
 	"""
 	Two behaviors:
 
 	- ``count == 2``: return two random meals. Exclusion parameters are ignored.
-	- ``count == 1``: return one random meal. Optionally exclude one or more dishes
-	  by composite key: legacy ``dish_name`` + ``dining_hall_id``, and/or parallel
-	  lists ``exclude_names`` / ``exclude_dining_hall_ids`` (same length).
+	- ``count == 1``: return one random meal. Optionally exclude dishes by composite
+	  key: parallel lists ``exclude_names``, ``exclude_dining_hall_ids``, ``exclude_meal_types`` (same length).
 	"""
-	stmt = select(Food, DiningHalls).join(DiningHalls, Food.dining_hall_id == DiningHalls.id)
+	stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id)
 
 	if count == 1:
+		# builds a tuple containing all (name, dining_hall_id, meal_type) triples to exclude
 		exclusions = _merge_exclusions(
-			dish_name, dining_hall_id, exclude_names, exclude_dining_hall_ids
+			exclude_names, exclude_dining_hall_ids, exclude_meal_types
 		)
 		if exclusions:
-			stmt = stmt.where(~tuple_(Food.name, Food.dining_hall_id).in_(exclusions))
-	# count == 2: no exclusion filter
+			# only fetch dishes NOT in exclusions (~ means not)
+			stmt = stmt.where(
+				~tuple_(Dishes.name, Dishes.dining_hall_id, Dishes.meal_type).in_(
+					exclusions
+				)
+			)
 
+	# TODO: find a more efficient way to implement this
 	stmt = stmt.order_by(func.random()).limit(count)
 
 	res = await db_session.execute(stmt)
@@ -144,17 +136,17 @@ async def get_random_meals_from_db(
 				dish_name=food.name,
 				dining_hall_id=food.dining_hall_id,
 				dining_hall_name=dining_hall.name,
+				meal_type=food.meal_type,
 				nutrition_info=food.nutrition_info,
-				elo_rating=food.elo_rating
-			) for food, dining_hall in entries
+				elo_rating=food.elo_rating,
+			)
+			for food, dining_hall in entries
 		]
 	)
 
 async def handle_get_pagination(db_session: AsyncSession, limit: int) -> PagesResponse:
-    """
-    Gets two random meal from the database.
-    """
-    stmt = select(func.count("*")).select_from(Food)
+    """Return how many pages exist for a given page size (total dish rows / limit)."""
+    stmt = select(func.count("*")).select_from(Dishes)
     res = await db_session.execute(stmt)
     count = res.scalar_one()
     pages = math.ceil(count / limit)
