@@ -27,8 +27,8 @@ async def populate_db(db_session: AsyncSession):
         )
         dining_hall_id = await dining_hall_repo.add_dining_hall(hall_entry)
 
-        # Make requets to the nutrition api for all days of the week
-        # (testing so im doing today only)
+        # Make requests to the nutrition API for all days of the week
+        # (currently limited to today for testing)
         resp = await parse_dishes_service.get_dining_hall_menu(hall, dtdate=None) 
 
         for meal_type in resp["dishes"]:
