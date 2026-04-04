@@ -41,7 +41,7 @@ function PairSelectionArrow({
           src={huskyImg}
           alt=""
           draggable={false}
-          className="relative z-10 h-42 w-42 select-none object-contain"
+          className="relative z-10 h-[10.5rem] w-[10.5rem] select-none object-contain"
         />
         <img
           src={arrowImg}
