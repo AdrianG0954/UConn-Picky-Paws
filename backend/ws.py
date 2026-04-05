@@ -159,17 +159,24 @@ async def publish_leaderboard_snapshots(
         for dining_hall_id in sorted(affected_dining_hall_ids, key=str)
     )
 
-    async def _publish_snapshot_for_scope(scope: LeaderboardScope):
-        """
-        Coroutine to publish a snapshot for a scope.
-        """
-        if not manager.has_subscribers(scope):
-            return 
-        entries = await _get_scope_entries(db_session, scope)
-        await manager.publish_snapshot(scope, entries)
+    # Filter scopes to only those with subscribers
+    scopes_with_subscribers = [scope for scope in scopes if manager.has_subscribers(scope)]
+    
+    if not scopes_with_subscribers:
+        return
 
-    # Concurrently publish snapshots for all scopes (ignore failures)
-    await asyncio.gather(*[_publish_snapshot_for_scope(scope) for scope in scopes], return_exceptions=True)
+    # Fetch all entries sequentially (AsyncSession is not safe for concurrent use)
+    scope_entries_map: dict[LeaderboardScope, list[LeaderboardEntry]] = {}
+    for scope in scopes_with_subscribers:
+        entries = await _get_scope_entries(db_session, scope)
+        scope_entries_map[scope] = entries
+
+    # Publish snapshots concurrently (network operations are safe to parallelize)
+    publish_tasks = [
+        manager.publish_snapshot(scope, entries)
+        for scope, entries in scope_entries_map.items()
+    ]
+    await asyncio.gather(*publish_tasks, return_exceptions=True)
 
 async def handle_leaderboard_websocket(
     websocket: WebSocket,
