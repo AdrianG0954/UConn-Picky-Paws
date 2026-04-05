@@ -149,7 +149,8 @@ export function useLeaderboardSocket(
 
         if (isSnapshotMessage(message)) {
           if (!snapshotMatchesTab(message, selectedTabRef.current)) return;
-          setEntries(message.entries.slice(0, 10));
+          // Show full server list (e.g. 100); LeaderboardPage scrolls the table body.
+          setEntries(message.entries);
           setLoading(false);
           setSocketError(null);
           return;

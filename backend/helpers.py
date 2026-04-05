@@ -1,7 +1,6 @@
 """
 Shared Pydantic response models and DB helpers for meals and leaderboard endpoints.
 """
-import math
 from typing import Any, Optional
 from uuid import UUID
 from pydantic import BaseModel
@@ -60,12 +59,13 @@ class LeaderboardEntry(BaseModel):
     name: str
     dining_hall_id: UUID
     dining_hall_name: str
+    meal_type: str
     elo: float
 
 async def get_leaderboard_entries(
     db_session: AsyncSession,
-    limit: int = 10,
-    dining_hall_id: UUID | None = None,
+    limit: int = 100,
+    dining_hall_id: Optional[UUID] = None,
 ) -> list[LeaderboardEntry]:
     
     # Base statement for the global leaderboard query
@@ -87,6 +87,7 @@ async def get_leaderboard_entries(
             name=dish.name,
             dining_hall_id=dish.dining_hall_id,
             dining_hall_name=dining_hall.name,
+            meal_type=dish.meal_type,
             elo=dish.elo_rating,
         )
         for dish, dining_hall in entries
@@ -121,7 +122,7 @@ async def get_random_meals_from_db(
 				)
 			)
 
-	# TODO: find a more efficient way to implement this
+	# Random is fine since our dataset is not too large (~1000 MAX)
 	stmt = stmt.order_by(func.random()).limit(count)
 
 	res = await db_session.execute(stmt)
@@ -143,12 +144,3 @@ async def get_random_meals_from_db(
 			for food, dining_hall in entries
 		]
 	)
-
-async def handle_get_pagination(db_session: AsyncSession, limit: int) -> PagesResponse:
-    """Return how many pages exist for a given page size (total dish rows / limit)."""
-    stmt = select(func.count("*")).select_from(Dishes)
-    res = await db_session.execute(stmt)
-    count = res.scalar_one()
-    pages = math.ceil(count / limit)
-
-    return PagesResponse(page_count=pages)
