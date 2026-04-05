@@ -33,7 +33,7 @@ function PairSelectionArrow({
 
   return (
     <div
-      className="flex shrink-0 flex-col items-center justify-center py-4 md:min-w-[6rem] md:self-stretch md:py-0 lg:min-w-[7rem]"
+      className="flex shrink-0 flex-col items-center justify-center py-2 md:min-w-[6rem] md:self-stretch md:py-0 lg:min-w-[7rem]"
       aria-hidden
     >
       <div className="relative flex flex-col items-center">
@@ -41,7 +41,7 @@ function PairSelectionArrow({
           src={huskyImg}
           alt=""
           draggable={false}
-          className="relative z-10 h-[10.5rem] w-[10.5rem] select-none object-contain"
+          className="relative z-10 h-28 w-28 select-none object-contain sm:h-36 sm:w-36 md:h-[10.5rem] md:w-[10.5rem]"
         />
         <img
           src={arrowImg}
@@ -69,6 +69,15 @@ export function HeadToHead() {
   const [eloLockIn, setEloLockIn] = useState<EloLockInState | null>(null);
 
   const showEloOnCards = cantDecideElo || eloLockIn !== null;
+
+  const onSelectCard0 = useCallback(() => setSelectedIndex(0), []);
+  const onSelectCard1 = useCallback(() => setSelectedIndex(1), []);
+  const onShowNutrition0 = useCallback(() => {
+    if (pair) setNutritionDish(pair[0]);
+  }, [pair]);
+  const onShowNutrition1 = useCallback(() => {
+    if (pair) setNutritionDish(pair[1]);
+  }, [pair]);
 
   const loadInitialPair = useCallback(async () => {
     setError(null);
@@ -151,13 +160,13 @@ export function HeadToHead() {
   };
 
   return (
-    <>
-      <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
-        <header className="mb-10 text-center">
-          <h1 className="text-6xl font-semibold tracking-tight text-uconn-navy">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-6 md:py-10">
+        <header className="mb-6 text-center md:mb-10">
+          <h1 className="text-4xl font-semibold tracking-tight text-uconn-navy sm:text-5xl md:text-6xl">
             Picky Paws
           </h1>
-          <p className="mt-2 text-zinc-600">
+          <p className="mt-1 text-sm text-zinc-600 md:mt-2 md:text-base">
             Rank your favorite UConn Dining Halls and their food!
           </p>
         </header>
@@ -177,13 +186,13 @@ export function HeadToHead() {
 
         {pair ? (
           <>
-            <div className="mb-10 grid grid-cols-1 items-stretch gap-y-6 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 lg:gap-x-20">
+            <div className="mb-6 grid grid-cols-1 items-stretch gap-y-4 md:mb-10 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 md:gap-y-6 lg:gap-x-20">
               <DishCard
                 dish={pair[0]}
                 selected={selectedIndex === 0}
                 disabled={busy}
-                onSelect={() => setSelectedIndex(0)}
-                onShowNutrition={() => setNutritionDish(pair[0])}
+                onSelect={onSelectCard0}
+                onShowNutrition={onShowNutrition0}
                 showElo={showEloOnCards}
                 eloMotion={
                   eloLockIn
@@ -206,8 +215,8 @@ export function HeadToHead() {
                 dish={pair[1]}
                 selected={selectedIndex === 1}
                 disabled={busy}
-                onSelect={() => setSelectedIndex(1)}
-                onShowNutrition={() => setNutritionDish(pair[1])}
+                onSelect={onSelectCard1}
+                onShowNutrition={onShowNutrition1}
                 showElo={showEloOnCards}
                 eloMotion={
                   eloLockIn
@@ -232,7 +241,7 @@ export function HeadToHead() {
                 type="button"
                 disabled={busy || selectedIndex === null}
                 onClick={() => void handleLockIn()}
-                className="min-w-0 rounded-xl bg-uconn-navy px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-uconn-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-w-0 rounded-xl bg-uconn-navy px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-uconn-navy-dark disabled:cursor-not-allowed disabled:opacity-50 md:py-4 md:text-lg"
               >
                 {busy ? "Working…" : "Lock in"}
               </button>
@@ -240,7 +249,7 @@ export function HeadToHead() {
                 type="button"
                 disabled={busy}
                 onClick={() => void handleCantDecide()}
-                className="min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-4 text-lg font-medium text-zinc-800 shadow-sm hover:border-uconn-navy/30 hover:bg-zinc-50 disabled:opacity-50"
+                className="min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base font-medium text-zinc-800 shadow-sm hover:border-uconn-navy/30 hover:bg-zinc-50 disabled:opacity-50 md:py-4 md:text-lg"
               >
                 Can&apos;t decide
               </button>
@@ -253,6 +262,6 @@ export function HeadToHead() {
         dish={nutritionDish}
         onClose={() => setNutritionDish(null)}
       />
-    </>
+    </div>
   );
 }

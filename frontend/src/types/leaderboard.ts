@@ -4,6 +4,8 @@ export type LeaderboardEntry = {
   name: string;
   dining_hall_id: string;
   dining_hall_name: string;
+  /** Part of the dish primary key; same name can exist per hall for different meals. */
+  meal_type: string;
   elo: number;
 };
 

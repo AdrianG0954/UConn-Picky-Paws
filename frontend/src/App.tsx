@@ -1,7 +1,16 @@
+import { lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { Layout } from "./Layout";
-import { HeadToHead } from "./pages/HeadToHeadPage";
+
+const HeadToHead = lazy(async () => {
+  const m = await import("./pages/HeadToHeadPage");
+  return { default: m.HeadToHead };
+});
+
+const LeaderboardPage = lazy(async () => {
+  const m = await import("./pages/LeaderboardPage");
+  return { default: m.LeaderboardPage };
+});
 
 function App() {
   return (

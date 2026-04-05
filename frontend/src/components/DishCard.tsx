@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { formatEloForDisplay } from "../lib/eloDisplay";
 import type { DishInfo } from "../types/meals";
 
@@ -20,7 +20,7 @@ type Props = {
   outcomeGlow?: "winner" | "loser";
 };
 
-export function DishCard({
+export const DishCard = memo(function DishCard({
   dish,
   selected,
   disabled,
@@ -73,7 +73,7 @@ export function DishCard({
   const eloRow = showElo ? (
     <p
       className={[
-        "mt-8 text-lg font-bold text-zinc-700 md:text-xl",
+        "mt-4 text-base font-bold text-zinc-700 md:mt-6 md:text-lg lg:mt-8 lg:text-xl",
         eloMotion
           ? ""
           : eloFadeIn
@@ -104,7 +104,7 @@ export function DishCard({
   return (
     <article
       className={[
-        "flex min-h-[22rem] flex-col rounded-3xl border border-zinc-200 bg-white p-8 text-left shadow-md transition-shadow md:min-h-[26rem] md:p-10 lg:min-h-[28rem]",
+        "flex min-h-0 flex-col rounded-3xl border border-zinc-200 bg-white p-5 text-left shadow-md transition-shadow sm:min-h-[17rem] sm:p-6 md:min-h-[20rem] md:p-8 lg:min-h-[22rem] lg:p-10",
         selected ? "border-uconn-navy ring-4 ring-uconn-navy/25" : "",
         disabled
           ? "cursor-not-allowed opacity-60"
@@ -117,11 +117,14 @@ export function DishCard({
         onClick={onSelect}
         className="grow text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-uconn-navy focus-visible:ring-offset-2 focus-visible:ring-offset-white"
       >
-        <h3 className="text-2xl font-bold leading-tight text-zinc-900 md:text-2xl lg:text-3xl">
+        <h3 className="text-xl font-bold leading-tight text-zinc-900 sm:text-2xl lg:text-3xl">
           {dish.dish_name}
         </h3>
-        <p className="mt-3 text-base font-bold text-zinc-600 md:text-2xl">
+        <p className="mt-2 text-sm font-bold text-zinc-600 sm:text-base md:mt-3 md:text-xl lg:text-2xl">
           {dish.dining_hall_name}
+        </p>
+        <p className="mt-1.5 text-xs capitalize text-zinc-500 sm:mt-2 sm:text-sm">
+          {dish.meal_type}
         </p>
         {eloRow}
       </button>
@@ -132,10 +135,12 @@ export function DishCard({
           e.stopPropagation();
           onShowNutrition();
         }}
-        className="mt-6 w-full rounded-xl border border-zinc-200 bg-zinc-50 py-4 text-base font-medium text-uconn-navy-muted hover:bg-zinc-100 disabled:opacity-50 md:text-lg"
+        className="mt-4 w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-medium text-uconn-navy-muted hover:bg-zinc-100 disabled:opacity-50 md:mt-6 md:py-4 md:text-base lg:text-lg"
       >
         Nutritional info
       </button>
     </article>
   );
-}
+});
+
+DishCard.displayName = "DishCard";
