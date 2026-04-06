@@ -185,11 +185,7 @@ export function HeadToHead() {
             onSelectAllSubset={scope.selectAllSubset}
             onClearSubset={scope.clearSubset}
             busy={busy}
-            applyDisabled={
-              busy ||
-              scope.draftFilterNames.length === 0 ||
-              scope.scopeSelectionMatchesApplied
-            }
+            applyDisabled={busy || scope.scopeSelectionMatchesApplied}
             onApply={() => void scope.applyScope()}
           />
         ) : null}
