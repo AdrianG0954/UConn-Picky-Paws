@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { motion } from "motion/react";
-import { formatEloForDisplay } from "../lib/eloDisplay";
 import type { LeaderboardEntry } from "../types/leaderboard";
+import { formatEloForDisplay } from "../utils/eloDisplay";
 
 type Props = {
   entry: LeaderboardEntry;

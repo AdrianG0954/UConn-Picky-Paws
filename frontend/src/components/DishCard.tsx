@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { formatEloForDisplay } from "../lib/eloDisplay";
 import type { DishInfo } from "../types/meals";
+import { formatEloForDisplay } from "../utils/eloDisplay";
 
 const ELO_ANIM_MS = 880;
 
