@@ -40,9 +40,10 @@ async def populate_db(db_session: AsyncSession):
                     meal_type=meal_type,
                     nutrition_info=dish['nutrition_facts'],
                     elo_rating=1000.0, # default elo rating
-                ) 
+                )
 
-                entry = await db_session.get(Dishes, (dining_hall_id, dish['name'], meal_type))
+                entry = await db_session.get(Dishes, (dining_hall_id, dish['name']))
+
                 if not entry:
                     db_session.add(dish_entry)
     

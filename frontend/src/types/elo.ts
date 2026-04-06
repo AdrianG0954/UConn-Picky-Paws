@@ -6,7 +6,7 @@ export type EloUpdateResponse = {
 
 /** Request body for PATCH /meals/elo; dish fields must match a single `dishes` row. */
 export type EloPatchBody = {
-  winner: { name: string; dining_hall_id: string; meal_type: string };
-  loser: { name: string; dining_hall_id: string; meal_type: string };
+  winner: { name: string; dining_hall_id: string };
+  loser: { name: string; dining_hall_id: string };
   draw: boolean;
 };

@@ -5,10 +5,24 @@
   --color-uconn-navy: #003b71;
   --color-uconn-navy-dark: #002347;
   --color-uconn-navy-muted: #1e4d7a;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-headline: "Lexend", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   background-color: #f4f6f8;
   color: #18181b;
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-headline);
 }

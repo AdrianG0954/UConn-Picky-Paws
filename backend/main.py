@@ -19,12 +19,8 @@ from backend.ws import (
 from backend.parse_dishes import ParseDishes, DiningHallEnum
 from backend.server import logger, app, request_db_session, _db_session_maker
 
+
 load_dotenv()  # Load environment variables from .env file
-
-
-@app.get("/")
-def read_root():
-	return {"message": "Hello, world"}
 
 
 @app.get("/health")
@@ -75,11 +71,10 @@ async def get_random_meals(
 	count: str = Query(
 		default="2",
 		pattern="^[1-2]$",
-		description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids, exclude_meal_types).",
+		description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids).",
 	),
-	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids and exclude_meal_types when count=1.")] = None,
-	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names and exclude_meal_types; same length.")] = None,
-	exclude_meal_types: Annotated[Optional[List[str]], Query(description="Parallel to exclude_names; same length.")] = None,
+	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids when count=1.")] = None,
+	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
 ) -> RandomMealsResponse:
 	"""Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
 	try:
@@ -87,8 +82,7 @@ async def get_random_meals(
 			db_session=db_session,
 			count=int(count),
 			exclude_names=exclude_names,
-			exclude_dining_hall_ids=exclude_dining_hall_ids,
-			exclude_meal_types=exclude_meal_types,
+			exclude_dining_hall_ids=exclude_dining_hall_ids
 		)
 		return response
 	except ValueError as ve:
@@ -96,19 +90,7 @@ async def get_random_meals(
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
 
-# TODO: Unused. Connect with frontend
-# @app.get("/meals/pagination", status_code=200)
-# async def get_pagination(
-#     db_session: Annotated[AsyncSession, Depends(request_db_session)],
-#     limit: int = 10,
-# ):
-# 	try:
-# 		response = await handle_get_pagination(db_session, limit)
-# 		return response
-# 	except ValueError as ve:
-# 		raise HTTPException(status_code=400, detail=str(ve))
-# 	except Exception as e:
-# 		raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/dining-halls", status_code=200, response_model=list[DiningHallSummary])
 async def dining_halls(
     db_session: Annotated[AsyncSession, Depends(request_db_session)],
@@ -120,10 +102,19 @@ async def dining_halls(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+
 @app.websocket("/ws/leaderboard")
 async def websocket_leaderboard(websocket: WebSocket):
+    """
+    WebSocket endpoint for the leaderboard
+
+    TL;DR; User subscribes to the leaderboard for live updates. 
+    When the elo of a dish in their subscribed board changes, 
+    we send them the updated leaderboard.
+    """
     manager = websocket.app.state.connection_manager
     return await handle_leaderboard_websocket(websocket, manager, _db_session_maker)
+
 
 @app.get("/meals/menu/{hall_name}", status_code=200)
 async def get_menu(

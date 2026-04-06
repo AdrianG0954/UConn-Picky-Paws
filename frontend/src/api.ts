@@ -10,7 +10,6 @@ function dishToEloPayload(dish: DishInfo): EloPatchBody['winner'] {
   return {
     name: dish.dish_name,
     dining_hall_id: dish.dining_hall_id,
-    meal_type: dish.meal_type,
   }
 }
 
@@ -33,7 +32,7 @@ export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
 }
 
 /**
- * GET /meals/random — repeats exclude_names, exclude_dining_hall_ids, exclude_meal_types per backend contract.
+ * GET /meals/random — repeats exclude_names and exclude_dining_hall_ids per backend contract.
  */
 export async function fetchRandomMeals(
   count: 1 | 2,
@@ -44,7 +43,6 @@ export async function fetchRandomMeals(
     for (const d of excludePairs) {
       params.append('exclude_names', d.dish_name)
       params.append('exclude_dining_hall_ids', d.dining_hall_id)
-      params.append('exclude_meal_types', d.meal_type)
     }
   }
 
