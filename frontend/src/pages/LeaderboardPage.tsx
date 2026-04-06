@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchDiningHalls } from "../api";
+import { LeaderboardPodium } from "../components/LeaderboardPodium";
 import { LeaderboardRow } from "../components/LeaderboardRow";
 import { useLeaderboardSocket } from "../hooks/useLeaderboardSocket";
 import type {
@@ -165,6 +166,10 @@ export function LeaderboardPage() {
         className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
         aria-label="Leaderboard table"
       >
+        {!loading && entries.length > 0 ? (
+          <LeaderboardPodium entries={entries.slice(0, 3)} />
+        ) : null}
+
         <div className="grid shrink-0 grid-cols-[2.75rem_minmax(0,1.5fr)_minmax(0,1.1fr)_auto] items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:grid-cols-[3rem_minmax(0,1.5fr)_minmax(0,1.15fr)_auto] sm:gap-4 sm:px-5 sm:py-4 sm:text-sm">
           <span className="tabular-nums">#</span>
           <span>Name</span>
@@ -181,13 +186,17 @@ export function LeaderboardPage() {
             <p className="px-5 py-6 text-sm text-zinc-500 md:py-8">
               No dishes are available for this leaderboard yet.
             </p>
+          ) : entries.length <= 3 ? (
+            <p className="px-5 py-6 text-sm text-zinc-500 md:py-8">
+              No additional entries in this leaderboard.
+            </p>
           ) : (
             <AnimatePresence initial={false} mode="popLayout">
-              {entries.map((entry, index) => (
+              {entries.slice(3).map((entry, index) => (
                 <LeaderboardRow
-                  key={`${entry.dining_hall_id}:${entry.name}:${entry.meal_type}`}
+                  key={`${entry.dining_hall_id}:${entry.name}`}
                   entry={entry}
-                  rank={index + 1}
+                  rank={index + 4}
                 />
               ))}
             </AnimatePresence>

@@ -18,9 +18,8 @@ class Dishes(Base):
         ),
     )
 
-    # Primary key is composite of: (dining_hall_id, name, meal_type)
+    # Primary key is composite of: (dining_hall_id, name)
     dining_hall_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey(DiningHalls.id, ondelete="CASCADE"), primary_key=True, nullable=False)
     name: Mapped[str] = mapped_column(TEXT, primary_key=True, nullable=False)
-    meal_type: Mapped[str] = mapped_column(TEXT, primary_key=True, nullable=False)
     nutrition_info: Mapped[dict] = mapped_column(JSONB, nullable=False)
     elo_rating: Mapped[float] = mapped_column(nullable=False, server_default=text("1000.0"))

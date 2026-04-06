@@ -123,9 +123,6 @@ export const DishCard = memo(function DishCard({
         <p className="mt-2 text-sm font-bold text-zinc-600 sm:text-base md:mt-3 md:text-xl lg:text-2xl">
           {dish.dining_hall_name}
         </p>
-        <p className="mt-1.5 text-xs capitalize text-zinc-500 sm:mt-2 sm:text-sm">
-          {dish.meal_type}
-        </p>
         {eloRow}
       </button>
       <button

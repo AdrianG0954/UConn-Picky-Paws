@@ -32,11 +32,10 @@ def upgrade() -> None:
     op.create_table('dishes',
     sa.Column('dining_hall_id', sa.UUID(), nullable=False),
     sa.Column('name', sa.TEXT(), nullable=False),
-    sa.Column('meal_type', sa.TEXT(), nullable=False),
     sa.Column('nutrition_info', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('elo_rating', sa.Float(), server_default=sa.text('1000.0'), nullable=False),
     sa.ForeignKeyConstraint(['dining_hall_id'], ['dining_halls.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('dining_hall_id', 'name', 'meal_type')
+    sa.PrimaryKeyConstraint('dining_hall_id', 'name')
     )
     op.create_index(
         op.f('ix_dishes_elo_rating'),

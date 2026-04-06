@@ -71,11 +71,10 @@ async def get_random_meals(
 	count: str = Query(
 		default="2",
 		pattern="^[1-2]$",
-		description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids, exclude_meal_types).",
+		description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids).",
 	),
-	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids and exclude_meal_types when count=1.")] = None,
-	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names and exclude_meal_types; same length.")] = None,
-	exclude_meal_types: Annotated[Optional[List[str]], Query(description="Parallel to exclude_names; same length.")] = None,
+	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids when count=1.")] = None,
+	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
 ) -> RandomMealsResponse:
 	"""Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
 	try:
@@ -83,8 +82,7 @@ async def get_random_meals(
 			db_session=db_session,
 			count=int(count),
 			exclude_names=exclude_names,
-			exclude_dining_hall_ids=exclude_dining_hall_ids,
-			exclude_meal_types=exclude_meal_types,
+			exclude_dining_hall_ids=exclude_dining_hall_ids
 		)
 		return response
 	except ValueError as ve:
