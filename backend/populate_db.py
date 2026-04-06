@@ -42,7 +42,7 @@ async def populate_db(db_session: AsyncSession):
                     elo_rating=1000.0, # default elo rating
                 ) 
 
-                entry = await db_session.get(Dishes, (dining_hall_id, dish['name'], meal_type)) # error here; unhashable type dict
+                entry = await db_session.get(Dishes, (dining_hall_id, dish['name'], meal_type))
                 if not entry:
                     db_session.add(dish_entry)
     

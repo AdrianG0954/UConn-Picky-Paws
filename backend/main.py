@@ -147,26 +147,3 @@ async def get_menu(
             status_code=500, 
             detail="Internal server error while fetching menu"
         )
-
-@app.get("/meals/menu/test/{hall_name}", status_code=200)
-async def test(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)], 
-    hall_name: str,
-    dtdate: Optional[str] = Query(default=None, description="Optionally fetch a specific date's menu. Format: MM/DD/YYYY"),
-) -> Dict:
-    try:
-        hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
-    except KeyError:
-        raise HTTPException(
-            status_code=404, 
-            detail=f"Dining hall '{hall_name}' not found"
-        )
-    
-    try:
-        return await ParseDishes(db_session).get_dining_hall_menu_with_nutritional_info(hall_info, dtdate)
-    except Exception as exc:
-        logger.error(f"Error fetching menu for {hall_name}: {exc}", exc_info=True)
-        raise HTTPException(
-            status_code=500, 
-            detail="Internal server error while fetching menu"
-        )
