@@ -37,7 +37,6 @@ async def populate_db(db_session: AsyncSession):
                 dish_entry = Dishes(
                     dining_hall_id=dining_hall_id,
                     name=dish['name'],
-                    meal_type=meal_type,
                     nutrition_info=dish['nutrition_facts'],
                     elo_rating=1000.0, # default elo rating
                 )
