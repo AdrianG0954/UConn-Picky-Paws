@@ -12,7 +12,7 @@ from database.dishes import Dishes
 
 
 class DishBody(BaseModel):
-	"""Identifies one row in ``dishes``; must include meal_type (part of the primary key)."""
+	"""Identifies one row in ``dishes`` (composite PK: dining_hall_id + name)."""
 
 	model_config = ConfigDict(populate_by_name=True)
 
@@ -21,7 +21,6 @@ class DishBody(BaseModel):
 		description="Dining hall UUID; accepts legacy key `d_id` in JSON.",
 	)
 	name: str
-	meal_type: str
 
 
 class EloBody(BaseModel):
@@ -61,12 +60,10 @@ class CalculateElo:
 		loser_elo = await self.get_elo(
 			request.loser.name,
 			request.loser.dining_hall_id,
-			request.loser.meal_type,
 		)
 		winner_elo = await self.get_elo(
 			request.winner.name,
 			request.winner.dining_hall_id,
-			request.winner.meal_type,
 		)
 
 		probability_winner = self.calculate_probability(loser_elo, winner_elo)
@@ -78,13 +75,11 @@ class CalculateElo:
 		await self.update_elo(
 			request.winner.name,
 			request.winner.dining_hall_id,
-			request.winner.meal_type,
 			winner_new_elo,
 		)
 		await self.update_elo(
 			request.loser.name,
 			request.loser.dining_hall_id,
-			request.loser.meal_type,
 			loser_new_elo,
 		)
 
@@ -92,7 +87,7 @@ class CalculateElo:
 
 
 	async def update_elo(
-		self, name: str, dining_hall_id: UUID, meal_type: str, new_elo: float
+		self, name: str, dining_hall_id: UUID, new_elo: float
 	) -> None:
 		"""
 		Updates the Elo rating for a dish in the database.
@@ -103,27 +98,25 @@ class CalculateElo:
 				.where(
 					Dishes.dining_hall_id == dining_hall_id,
 					Dishes.name == name,
-					Dishes.meal_type == meal_type,
 				)
 				.values(elo_rating=new_elo)
 			)
 			await self.db_session.execute(stmt)
 		except Exception as e:
 			raise RuntimeError(
-				f"Failed to update Elo rating for '{name}' ({meal_type}) in dining hall {dining_hall_id}: {str(e)}"
+				f"Failed to update Elo rating for '{name}' in dining hall {dining_hall_id}: {str(e)}"
 			)
 
-	async def get_elo(self, name: str, dining_hall_id: UUID, meal_type: str) -> float:
+	async def get_elo(self, name: str, dining_hall_id: UUID) -> float:
 		"""Load current Elo; WHERE must match the full PK so the result is a single row."""
 		stmt = select(Dishes.elo_rating).where(
 			Dishes.dining_hall_id == dining_hall_id,
 			Dishes.name == name,
-			Dishes.meal_type == meal_type,
 		)
 		res = await self.db_session.execute(stmt)
 		elo = res.scalar_one_or_none()
 		if elo is None:
 			raise ValueError(
-				f"Elo rating not found for '{name}' ({meal_type}) in dining hall {dining_hall_id}."
+				f"Elo rating not found for '{name}' in dining hall {dining_hall_id}."
 			)
 		return elo

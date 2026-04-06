@@ -194,7 +194,7 @@ export function LeaderboardPage() {
             <AnimatePresence initial={false} mode="popLayout">
               {entries.slice(3).map((entry, index) => (
                 <LeaderboardRow
-                  key={`${entry.dining_hall_id}:${entry.name}:${entry.meal_type}`}
+                  key={`${entry.dining_hall_id}:${entry.name}`}
                   entry={entry}
                   rank={index + 4}
                 />

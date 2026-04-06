@@ -120,9 +120,6 @@ function PodiumSlot({
               <p className="break-words text-xs font-medium leading-snug text-zinc-900 sm:text-[0.8125rem]">
                 {entry.name}
               </p>
-              <p className="mt-0.5 text-[0.65rem] capitalize leading-tight text-zinc-500 sm:text-xs">
-                {entry.meal_type}
-              </p>
               <p className="mt-1 text-[0.65rem] leading-tight text-zinc-600 sm:text-xs">
                 {entry.dining_hall_name}
               </p>

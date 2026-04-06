@@ -15,26 +15,24 @@ from database.dining_halls import DiningHalls
 def _merge_exclusions(
 	exclude_names: Optional[list[str]],
 	exclude_dining_hall_ids: Optional[list[UUID]],
-	exclude_meal_types: Optional[list[str]],
-) -> list[tuple[str, UUID, str]]:
+) -> list[tuple[str, UUID]]:
 	"""
-	Build a unique list of (name, dining_hall_id, meal_type) triples to exclude.
+	Build a unique list of (name, dining_hall_id) to exclude.
 	"""
 	names = exclude_names or []
 	hall_ids = exclude_dining_hall_ids or []
-	meal_types = exclude_meal_types or []
-	if not (len(names) == len(hall_ids) == len(meal_types)):
+	if not (len(names) == len(hall_ids)):
 		raise ValueError(
-			"exclude_names, exclude_dining_hall_ids, and exclude_meal_types must have the same length."
+			"exclude_names and exclude_dining_hall_ids must have the same length."
 		)
 
 	# return only the unique exclusions
-	seen: set[tuple[str, UUID, str]] = set()
-	out: list[tuple[str, UUID, str]] = []
-	for triple in zip(names, hall_ids, meal_types):
-		if triple not in seen:
-			seen.add(triple)
-			out.append(triple)
+	seen: set[tuple[str, UUID]] = set()
+	out: list[tuple[str, UUID]] = []
+	for name, hall_id in zip(names, hall_ids):
+		if (name, hall_id) not in seen:
+			seen.add((name, hall_id))
+			out.append((name, hall_id))
 
 	return out
 
@@ -42,12 +40,11 @@ class PagesResponse(BaseModel):
     page_count: int
 
 class DishInfo(BaseModel):
-	"""One dish for JSON APIs; fields align with the ``dishes`` composite PK (hall, name, meal_type)."""
+	"""One dish for JSON APIs; fields align with the ``dishes`` composite PK (hall, name)."""
 
 	dish_name: str
 	dining_hall_id: UUID
 	dining_hall_name: str
-	meal_type: str
 	nutrition_info: dict[str, Any]
 	elo_rating: float
 
@@ -59,7 +56,6 @@ class LeaderboardEntry(BaseModel):
     name: str
     dining_hall_id: UUID
     dining_hall_name: str
-    meal_type: str
     elo: float
 
 async def get_leaderboard_entries(
@@ -87,7 +83,6 @@ async def get_leaderboard_entries(
             name=dish.name,
             dining_hall_id=dish.dining_hall_id,
             dining_hall_name=dining_hall.name,
-            meal_type=dish.meal_type,
             elo=dish.elo_rating,
         )
         for dish, dining_hall in entries
@@ -98,26 +93,25 @@ async def get_random_meals_from_db(
 	count: int,
 	exclude_names: Optional[list[str]] = None,
 	exclude_dining_hall_ids: Optional[list[UUID]] = None,
-	exclude_meal_types: Optional[list[str]] = None,
 ) -> RandomMealsResponse:
 	"""
 	Two behaviors:
 
 	- ``count == 2``: return two random meals. Exclusion parameters are ignored.
 	- ``count == 1``: return one random meal. Optionally exclude dishes by composite
-	  key: parallel lists ``exclude_names``, ``exclude_dining_hall_ids``, ``exclude_meal_types`` (same length).
+	  key: parallel lists ``exclude_names``, ``exclude_dining_hall_ids`` (same length).
 	"""
 	stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id)
 
 	if count == 1:
-		# builds a tuple containing all (name, dining_hall_id, meal_type) triples to exclude
+		# builds a tuple containing all (name, dining_hall_id) to exclude
 		exclusions = _merge_exclusions(
-			exclude_names, exclude_dining_hall_ids, exclude_meal_types
+			exclude_names, exclude_dining_hall_ids
 		)
 		if exclusions:
 			# only fetch dishes NOT in exclusions (~ means not)
 			stmt = stmt.where(
-				~tuple_(Dishes.name, Dishes.dining_hall_id, Dishes.meal_type).in_(
+				~tuple_(Dishes.name, Dishes.dining_hall_id).in_(
 					exclusions
 				)
 			)
@@ -137,7 +131,6 @@ async def get_random_meals_from_db(
 				dish_name=food.name,
 				dining_hall_id=food.dining_hall_id,
 				dining_hall_name=dining_hall.name,
-				meal_type=food.meal_type,
 				nutrition_info=food.nutrition_info,
 				elo_rating=food.elo_rating,
 			)
