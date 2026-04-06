@@ -126,7 +126,10 @@ function PodiumSlot({
             </>
           ) : (
             <div className="flex min-h-[4rem] flex-col items-center justify-center gap-1 sm:min-h-[4.5rem]">
-              <span className="text-xs text-zinc-400">—</span>
+              <span className="sr-only">{`No dish in rank ${rank} yet`}</span>
+              <span className="text-xs text-zinc-400" aria-hidden="true">
+                —
+              </span>
             </div>
           )}
         </div>
