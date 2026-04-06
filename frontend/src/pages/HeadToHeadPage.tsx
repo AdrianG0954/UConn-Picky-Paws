@@ -153,7 +153,7 @@ export function HeadToHead() {
       setSelectedIndex(null);
     } catch (e) {
       setEloLockIn(null);
-      setError(e instanceof Error ? e.message : "Could not lock in this pick.");
+      setError(e instanceof Error ? e.message : "Could not vote for this dish.");
     } finally {
       setBusy(false);
     }
@@ -243,7 +243,7 @@ export function HeadToHead() {
                 onClick={() => void handleLockIn()}
                 className="min-w-0 rounded-xl bg-uconn-navy px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-uconn-navy-dark disabled:cursor-not-allowed disabled:opacity-50 md:py-4 md:text-lg"
               >
-                {busy ? "Working…" : "Lock in"}
+                {busy ? "Working…" : "Vote"}
               </button>
               <button
                 type="button"

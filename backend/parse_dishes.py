@@ -11,7 +11,7 @@ class DiningHallEnum(Enum):
     CONNECTICUT = "03"
     NORTH = "07"
     PUTNAM = "06"
-    NORTH_WEST = "15"
+    NORTHWEST = "15"
     WHITNEY = "01"
     MCMAHON = "05"
     SOUTH = "16"
