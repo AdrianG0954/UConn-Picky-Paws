@@ -78,9 +78,6 @@ async def get_random_meals(
     exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
 ) -> RandomMealsResponse:
     """Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
-    if not filter_dining_halls:
-        raise HTTPException(status_code=400, detail="At least one dining hall must be specified.")
-    
     try:
         response = await get_random_meals_from_db(
             db_session=db_session,
