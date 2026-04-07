@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,18 +30,17 @@ async def populate_db(db_session: AsyncSession):
         # Make requests to the nutrition api for all days of the week
         # (testing so im doing today only)
         # TODO: Optimize lookups to avoid N + 1 queries 
-        resp = await parse_dishes_service.get_dining_hall_menu_with_nutritional_info(hall, dtdate=None) 
+        resp = await parse_dishes_service.get_dining_hall_menu(hall, dtdate=None) 
         for meal_type in resp["dishes"]:
             for dish in resp["dishes"][meal_type]:
                 dish_entry = Dishes(
                     dining_hall_id=dining_hall_id,
-                    name=dish['name'],
-                    nutrition_info=dish['nutrition_facts'],
+                    name=dish,
+                    nutrition_info={}, # TODO: populate this with actual nutrition info
                     elo_rating=1000.0, # default elo rating
-                )
+                ) 
 
-                entry = await db_session.get(Dishes, (dining_hall_id, dish['name']))
-
+                entry = await db_session.get(Dishes, (dining_hall_id, dish))
                 if not entry:
                     db_session.add(dish_entry)
     
