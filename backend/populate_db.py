@@ -17,7 +17,7 @@ async def populate_db():
     async def fetch_and_update(hall: DiningHallEnum):
         async with _db_session_maker() as db_session:
             dining_hall_repo = DiningHallRepository(db_session)
-            parse_dishes_service = ParseDishes(db_session)
+            parse_dishes_service = ParseDishes()
 
             normalized_name = hall.name.lower().replace("_", " ")
             dining_hall_id = await dining_hall_repo.add_dining_hall(req_id=hall.value, name=normalized_name)
@@ -27,6 +27,9 @@ async def populate_db():
                 if entry is None:
                     raise ValueError(f"Dining hall '{normalized_name}' not found")
                 dining_hall_id = entry.id
+
+            # Flush to persist dining hall before making HTTP request
+            await db_session.flush()
 
             # we need to change to do this for the rest of the week as well
             resp = await parse_dishes_service.get_dining_hall_menu(hall, dtdate=None)
