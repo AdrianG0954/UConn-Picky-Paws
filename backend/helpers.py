@@ -13,43 +13,43 @@ from database.dining_halls import DiningHalls
 
 
 def _merge_exclusions(
-	exclude_names: Optional[list[str]],
-	exclude_dining_hall_ids: Optional[list[UUID]],
+    exclude_names: Optional[list[str]],
+    exclude_dining_hall_ids: Optional[list[UUID]],
 ) -> list[tuple[str, UUID]]:
-	"""
-	Build a unique list of (name, dining_hall_id) to exclude.
-	"""
-	names = exclude_names or []
-	hall_ids = exclude_dining_hall_ids or []
-	if not (len(names) == len(hall_ids)):
-		raise ValueError(
-			"exclude_names and exclude_dining_hall_ids must have the same length."
-		)
+    """
+    Build a unique list of (name, dining_hall_id) to exclude.
+    """
+    names = exclude_names or []
+    hall_ids = exclude_dining_hall_ids or []
+    if not (len(names) == len(hall_ids)):
+        raise ValueError(
+            "exclude_names and exclude_dining_hall_ids must have the same length."
+        )
 
-	# return only the unique exclusions
-	seen: set[tuple[str, UUID]] = set()
-	out: list[tuple[str, UUID]] = []
-	for name, hall_id in zip(names, hall_ids):
-		if (name, hall_id) not in seen:
-			seen.add((name, hall_id))
-			out.append((name, hall_id))
+    # return only the unique exclusions
+    seen: set[tuple[str, UUID]] = set()
+    out: list[tuple[str, UUID]] = []
+    for name, hall_id in zip(names, hall_ids):
+        if (name, hall_id) not in seen:
+            seen.add((name, hall_id))
+            out.append((name, hall_id))
 
-	return out
+    return out
 
 class PagesResponse(BaseModel):
     page_count: int
 
 class DishInfo(BaseModel):
-	"""One dish for JSON APIs; fields align with the ``dishes`` composite PK (hall, name)."""
+    """One dish for JSON APIs; fields align with the ``dishes`` composite PK (hall, name)."""
 
-	dish_name: str
-	dining_hall_id: UUID
-	dining_hall_name: str
-	nutrition_info: dict[str, Any]
-	elo_rating: float
+    dish_name: str
+    dining_hall_id: UUID
+    dining_hall_name: str
+    nutrition_info: dict[str, Any]
+    elo_rating: float
 
 class RandomMealsResponse(BaseModel):
-	meals: list[DishInfo]
+    meals: list[DishInfo]
 
 
 class LeaderboardEntry(BaseModel):
@@ -89,51 +89,54 @@ async def get_leaderboard_entries(
     ]
 
 async def get_random_meals_from_db(
-	db_session: AsyncSession,
-	count: int,
-	exclude_names: Optional[list[str]] = None,
-	exclude_dining_hall_ids: Optional[list[UUID]] = None,
+    db_session: AsyncSession,
+    count: int,
+    filter_dining_halls: list[str],
+    exclude_names: Optional[list[str]] = None,
+    exclude_dining_hall_ids: Optional[list[UUID]] = None,
 ) -> RandomMealsResponse:
-	"""
-	Two behaviors:
+    """
+    Two behaviors:
 
-	- ``count == 2``: return two random meals. Exclusion parameters are ignored.
-	- ``count == 1``: return one random meal. Optionally exclude dishes by composite
-	  key: parallel lists ``exclude_names``, ``exclude_dining_hall_ids`` (same length).
-	"""
-	stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id)
+    - ``count == 2``: return two random meals. Exclusion parameters are ignored.
+    - ``count == 1``: return one random meal. Optionally exclude dishes by composite
+    key: parallel lists ``exclude_names``, ``exclude_dining_hall_ids`` (same length).
 
-	if count == 1:
-		# builds a tuple containing all (name, dining_hall_id) to exclude
-		exclusions = _merge_exclusions(
-			exclude_names, exclude_dining_hall_ids
-		)
-		if exclusions:
-			# only fetch dishes NOT in exclusions (~ means not)
-			stmt = stmt.where(
-				~tuple_(Dishes.name, Dishes.dining_hall_id).in_(
-					exclusions
-				)
-			)
+    NOTE: filter_dining_halls is to limit the results to only the halls the user specifies.
+    """
+    stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id).where(DiningHalls.name.in_(filter_dining_halls))
 
-	# Random is fine since our dataset is not too large (~1000 MAX)
-	stmt = stmt.order_by(func.random()).limit(count)
+    if count == 1:
+        # builds a tuple containing all (name, dining_hall_id) to exclude
+        exclusions = _merge_exclusions(
+            exclude_names, exclude_dining_hall_ids
+        )
+        if exclusions:
+            # only fetch dishes NOT in exclusions (~ means not)
+            stmt = stmt.where(
+                ~tuple_(Dishes.name, Dishes.dining_hall_id).in_(
+                    exclusions
+                )
+            )
 
-	res = await db_session.execute(stmt)
-	entries = res.all()
+    # Random is fine since our dataset is not too large (in the thousands)
+    stmt = stmt.order_by(func.random()).limit(count)
 
-	if len(entries) != count:
-		raise ValueError(f"Failed to get {count} random meals.")
+    res = await db_session.execute(stmt)
+    entries = res.all()
 
-	return RandomMealsResponse(
-		meals=[
-			DishInfo(
-				dish_name=food.name,
-				dining_hall_id=food.dining_hall_id,
-				dining_hall_name=dining_hall.name,
-				nutrition_info=food.nutrition_info,
-				elo_rating=food.elo_rating,
-			)
-			for food, dining_hall in entries
-		]
-	)
+    if len(entries) != count:
+        raise ValueError(f"Failed to get {count} random meals.")
+
+    return RandomMealsResponse(
+        meals=[
+            DishInfo(
+                dish_name=food.name,
+                dining_hall_id=food.dining_hall_id,
+                dining_hall_name=dining_hall.name,
+                nutrition_info=food.nutrition_info,
+                elo_rating=food.elo_rating,
+            )
+            for food, dining_hall in entries
+        ]
+    )

@@ -25,7 +25,7 @@ load_dotenv()  # Load environment variables from .env file
 
 @app.get("/health")
 def health():
-	return {"status": "ok"}
+    return {"status": "ok"}
 
 
 @app.patch("/meals/elo", status_code=200, response_model=EloUpdateResponse)
@@ -68,27 +68,29 @@ async def update_elo(
 @app.get("/meals/random", status_code=200)
 async def get_random_meals(
     db_session: Annotated[AsyncSession, Depends(request_db_session)],
-	count: str = Query(
-		default="2",
-		pattern="^[1-2]$",
-		description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids).",
-	),
-	exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids when count=1.")] = None,
-	exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
+    filter_dining_halls: Annotated[List[str], Query(description="Filter results to only the specified dining halls")],
+    count: str = Query(
+        default="2",
+        pattern="^[1-2]$",
+        description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids).",
+    ),
+    exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids when count=1.")] = None,
+    exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
 ) -> RandomMealsResponse:
-	"""Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
-	try:
-		response = await get_random_meals_from_db(
-			db_session=db_session,
-			count=int(count),
-			exclude_names=exclude_names,
-			exclude_dining_hall_ids=exclude_dining_hall_ids
-		)
-		return response
-	except ValueError as ve:
-		raise HTTPException(status_code=400, detail=str(ve))
-	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+    """Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
+    try:
+        response = await get_random_meals_from_db(
+            db_session=db_session,
+            count=int(count),
+            filter_dining_halls=filter_dining_halls,
+            exclude_names=exclude_names,
+            exclude_dining_hall_ids=exclude_dining_hall_ids,
+        )
+        return response
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/dining-halls", status_code=200, response_model=list[DiningHallSummary])

@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { formatEloForDisplay } from "../lib/eloDisplay";
+import { formatEloForDisplay } from "../utils/eloDisplay";
 import type { LeaderboardEntry } from "../types/leaderboard";
 
 type Props = {
