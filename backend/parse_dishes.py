@@ -19,8 +19,8 @@ class DiningHallEnum(Enum):
 
 
 class ParseDishes:
-    def __init__(self, db_session: AsyncSession):
-        self.db_session = db_session
+    def __init__(self):
+        pass
 
 
     async def get_dining_hall_menu(self, hall_info: DiningHallEnum, dtdate: Optional[str]):
