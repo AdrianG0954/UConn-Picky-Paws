@@ -32,13 +32,18 @@ export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
 }
 
 /**
- * GET /meals/random — repeats exclude_names and exclude_dining_hall_ids per backend contract.
+ * GET /meals/random. Backend expects repeated `filter_dining_halls` query params
+ * (one per hall name). With count 1, `excludePairs` becomes parallel exclude_* params.
  */
 export async function fetchRandomMeals(
   count: 1 | 2,
+  filterDiningHalls: string[],
   excludePairs?: DishInfo[],
 ): Promise<DishInfo[]> {
   const params = new URLSearchParams({ count: String(count) })
+  for (const name of filterDiningHalls) {
+    params.append('filter_dining_halls', name)
+  }
   if (excludePairs?.length) {
     for (const d of excludePairs) {
       params.append('exclude_names', d.dish_name)

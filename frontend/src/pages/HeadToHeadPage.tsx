@@ -1,71 +1,40 @@
+/**
+ * Head-to-head ranking: load two dishes, vote (PATCH Elo), replace loser only;
+ * “Can’t decide” swaps both. Scope (which halls) comes from useRankDiningHallScope.
+ */
 import { useCallback, useEffect, useState } from "react";
 import { fetchRandomMeals, patchMealElo } from "../api";
 import { DishCard } from "../components/DishCard";
 import { NutritionModal } from "../components/NutritionModal";
+import { PairSelectionArrow } from "../components/PairSelectionArrow";
+import { RankScopeBar } from "../components/RankScopeBar";
+import { useRankDiningHallScope } from "../hooks/useRankDiningHallScope";
 import type { DishInfo } from "../types/meals";
-import huskyImg from "../assets/Husky-PNG-Photo.png";
-import arrowImg from "../assets/arrow.png";
+import { errorMessage } from "../utils/errorMessage";
+import type { EloLockInState } from "../utils/headToHeadElo";
+import { dishCardEloForSlot } from "../utils/headToHeadElo";
 
 type Pair = [DishInfo, DishInfo];
 
+/** Pause after vote so Elo animation finishes before fetching the replacement dish. */
 const ELO_LOCK_IN_HOLD_MS = 1500;
+/** Pause before loading a new pair so both Elos flash briefly. */
 const ELO_CANT_DECIDE_HOLD_MS = 1500;
 
-type EloLockInState = {
-  winnerSlot: 0 | 1;
-  winnerFrom: number;
-  winnerTo: number;
-  loserFrom: number;
-  loserTo: number;
-};
-
-function PairSelectionArrow({
-  selectedIndex,
-}: {
-  selectedIndex: 0 | 1 | null;
-}) {
-  const arrowRotationClass =
-    selectedIndex === null
-      ? "-rotate-90"
-      : selectedIndex === 0
-        ? "-rotate-90 md:rotate-180"
-        : "rotate-90 md:rotate-0";
-
-  return (
-    <div
-      className="flex shrink-0 flex-col items-center justify-center py-2 md:min-w-[6rem] md:self-stretch md:py-0 lg:min-w-[7rem]"
-      aria-hidden
-    >
-      <div className="relative flex flex-col items-center">
-        <img
-          src={huskyImg}
-          alt=""
-          draggable={false}
-          className="relative z-10 h-28 w-28 select-none object-contain sm:h-36 sm:w-36 md:h-[10.5rem] md:w-[10.5rem]"
-        />
-        <img
-          src={arrowImg}
-          alt=""
-          draggable={false}
-          className={[
-            "relative z-0 -mt-0 h-24 w-24 origin-center select-none object-contain transition-transform duration-300 ease-out",
-            arrowRotationClass,
-          ].join(" ")}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function HeadToHead() {
+  const [error, setError] = useState<string | null>(null);
+  const clearScopeApplyError = useCallback(() => setError(null), []);
+  const scope = useRankDiningHallScope({
+    onApplyInvalid: setError,
+    onApplyValid: clearScopeApplyError,
+  });
+
   const [pair, setPair] = useState<Pair | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<0 | 1 | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [nutritionDish, setNutritionDish] = useState<DishInfo | null>(null);
-  /** After “Can’t decide”: brief ELO reveal before swapping pair. */
   const [cantDecideElo, setCantDecideElo] = useState(false);
-  /** After lock-in PATCH: animate ELOs, then fetch replacement meal. */
+  /** Set after PATCH until replacement meal arrives; drives per-card Elo animation. */
   const [eloLockIn, setEloLockIn] = useState<EloLockInState | null>(null);
 
   const showEloOnCards = cantDecideElo || eloLockIn !== null;
@@ -80,24 +49,28 @@ export function HeadToHead() {
   }, [pair]);
 
   const loadInitialPair = useCallback(async () => {
+    // Wait until scope hook has at least one hall name (empty list is invalid for the API).
+    if (scope.activeFilterNames.length === 0) return;
     setError(null);
     setBusy(true);
     try {
-      const meals = await fetchRandomMeals(2);
+      const meals = await fetchRandomMeals(2, scope.activeFilterNames);
       if (meals.length !== 2)
         throw new Error("Expected two meals from the server.");
       setPair([meals[0], meals[1]]);
       setSelectedIndex(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load dishes.");
+      setError(errorMessage(e, "Failed to load dishes."));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [scope.activeFilterNames]);
 
+  // New scope (first load or Apply) → fetch a fresh pair for that hall set.
   useEffect(() => {
+    if (scope.activeFilterNames.length === 0) return;
     void loadInitialPair();
-  }, [loadInitialPair]);
+  }, [scope.activeFilterNames, loadInitialPair]);
 
   const handleCantDecide = async () => {
     setError(null);
@@ -105,7 +78,7 @@ export function HeadToHead() {
     try {
       setCantDecideElo(true);
       await new Promise((r) => setTimeout(r, ELO_CANT_DECIDE_HOLD_MS));
-      const meals = await fetchRandomMeals(2);
+      const meals = await fetchRandomMeals(2, scope.activeFilterNames);
       if (meals.length !== 2)
         throw new Error("Expected two meals from the server.");
       setPair([meals[0], meals[1]]);
@@ -113,15 +86,15 @@ export function HeadToHead() {
       setCantDecideElo(false);
     } catch (e) {
       setCantDecideElo(false);
-      setError(e instanceof Error ? e.message : "Failed to load new pair.");
+      setError(errorMessage(e, "Failed to load new pair."));
     } finally {
       setBusy(false);
     }
   };
 
-  /** Winner keeps their slot; loser is replaced; PATCH updates winner ELO on the board. */
   const handleLockIn = async () => {
     if (!pair || selectedIndex === null) return;
+    // Winner stays in place; loser slot gets one new dish (count=1 + exclude winner+loser).
     const winnerSlot = selectedIndex;
     const loserSlot: 0 | 1 = winnerSlot === 0 ? 1 : 0;
     const winner = pair[winnerSlot];
@@ -143,7 +116,10 @@ export function HeadToHead() {
         loserTo: loser_new_elo,
       });
       await new Promise((r) => setTimeout(r, ELO_LOCK_IN_HOLD_MS));
-      const meals = await fetchRandomMeals(1, [winner, loser]);
+      const meals = await fetchRandomMeals(1, scope.activeFilterNames, [
+        winner,
+        loser,
+      ]);
       if (meals.length !== 1) throw new Error("Expected one replacement meal.");
       const next: Pair = [...pair];
       next[winnerSlot] = { ...winner, elo_rating: winner_new_elo };
@@ -153,11 +129,18 @@ export function HeadToHead() {
       setSelectedIndex(null);
     } catch (e) {
       setEloLockIn(null);
-      setError(e instanceof Error ? e.message : "Could not vote for this dish.");
+      setError(errorMessage(e, "Could not vote for this dish."));
     } finally {
       setBusy(false);
     }
   };
+
+  const elo0 = dishCardEloForSlot(0, eloLockIn, cantDecideElo);
+  const elo1 = dishCardEloForSlot(1, eloLockIn, cantDecideElo);
+
+  /** Scope UI and dish loads only run once halls exist. */
+  const hallsReadyWithOptions =
+    scope.hallsStatus === "ready" && scope.hallOptions.length > 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -171,6 +154,42 @@ export function HeadToHead() {
           </p>
         </header>
 
+        {scope.hallsStatus === "loading" ? (
+          <p className="mb-6 text-center text-sm text-zinc-500">
+            Loading dining halls…
+          </p>
+        ) : null}
+
+        {scope.hallsStatus === "error" && scope.hallsError ? (
+          <div
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {scope.hallsError}
+          </div>
+        ) : null}
+
+        {scope.hallsStatus === "ready" && scope.hallOptions.length === 0 ? (
+          <p className="mb-6 text-center text-sm text-zinc-600">
+            No dining halls are available yet. Check back later.
+          </p>
+        ) : null}
+
+        {hallsReadyWithOptions ? (
+          <RankScopeBar
+            hallOptions={scope.hallOptions}
+            filterMode={scope.filterMode}
+            onFilterModeChange={scope.setFilterMode}
+            subsetIds={scope.subsetIds}
+            onToggleHall={scope.toggleSubsetHall}
+            onSelectAllSubset={scope.selectAllSubset}
+            onClearSubset={scope.clearSubset}
+            busy={busy}
+            applyDisabled={busy || scope.scopeSelectionMatchesApplied}
+            onApply={() => void scope.applyScope()}
+          />
+        ) : null}
+
         {error ? (
           <div
             className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
@@ -180,7 +199,7 @@ export function HeadToHead() {
           </div>
         ) : null}
 
-        {!pair && !error ? (
+        {hallsReadyWithOptions && !pair && !error ? (
           <p className="text-center text-zinc-500">Loading dishes…</p>
         ) : null}
 
