@@ -2,7 +2,6 @@
 
 from enum import Enum
 from typing import Dict, Optional
-import json
 from itertools import batched
 
 import httpx
@@ -78,6 +77,9 @@ class ParseDishes:
                 return resp
             
             parsed = self.parse_meal_item(response.text)
+
+            if parsed['name'] == "Unknown": continue # We do not want Unknowns in our DB
+
             resp.append(parsed)
                 
         return resp
@@ -128,11 +130,11 @@ class ParseDishes:
 
         soup = BeautifulSoup(html, 'html.parser')
 
-        # invalid item
+        # invalid item; happens when dining halls have a "Manager's Choice" option
         if soup.find(class_="labelnotavailable") is not None:
-            return item
+            return {"name": "Unknown", "nutrition_facts": {}}
 
-        item["name"] = soup.find(class_="labelrecipe").get_text()
+        item["name"] = soup.find(class_="labelrecipe").get_text() or "Unknown"
         item["nutrition_facts"] = {}
         item["nutrition_facts"]["serving_size"] = soup.find_all(class_="nutfactsservsize")[1].get_text().lower()
         item["nutrition_facts"]["calories"] = int(soup.find(class_="nutfactscaloriesval").get_text())

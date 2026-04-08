@@ -26,11 +26,17 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 1m30s
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 1m
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 25s
     depends_on:
       database:
         condition: service_healthy
