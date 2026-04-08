@@ -120,7 +120,6 @@ async def websocket_leaderboard(websocket: WebSocket):
 
 @app.get("/meals/menu/{hall_name}", status_code=200)
 async def get_menu(
-    db_session: Annotated[AsyncSession, Depends(request_db_session)], 
     hall_name: str,
     dtdate: Optional[str] = Query(default=None, description="Optionally fetch a specific date's menu. Format: MM/DD/YYYY"),
 ) -> Dict:
@@ -130,10 +129,9 @@ async def get_menu(
         raise HTTPException(
             status_code=404, 
             detail=f"Dining hall '{hall_name}' not found"
-        )
-    
+        ) 
     try:
-        return await ParseDishes(db_session).get_dining_hall_menu(hall_info, dtdate)
+        return await ParseDishes().get_dining_hall_menu(hall_info, dtdate)
     except Exception as exc:
         logger.error(f"Error fetching menu for {hall_name}: {exc}", exc_info=True)
         raise HTTPException(
