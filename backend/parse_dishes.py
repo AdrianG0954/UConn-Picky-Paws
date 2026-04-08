@@ -134,7 +134,7 @@ class ParseDishes:
         if soup.find(class_="labelnotavailable") is not None:
             return {"name": "Unknown", "nutrition_facts": {}}
 
-        item["name"] = soup.find(class_="labelrecipe").get_text() or "Unknown"
+        item["name"] = soup.find(class_="labelrecipe").get_text()
         item["nutrition_facts"] = {}
         item["nutrition_facts"]["serving_size"] = soup.find_all(class_="nutfactsservsize")[1].get_text().lower()
         item["nutrition_facts"]["calories"] = int(soup.find(class_="nutfactscaloriesval").get_text())
