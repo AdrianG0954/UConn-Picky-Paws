@@ -1,8 +1,13 @@
+# pyright: reportOptionalMemberAccess=false
+
 from enum import Enum
 from typing import Dict, Optional
+import json
+from itertools import batched
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
+from bs4 import BeautifulSoup
 
 from backend.server import logger
 
@@ -22,6 +27,150 @@ class ParseDishes:
     def __init__(self):
         pass
 
+    async def get_dining_hall_menu_with_nutritional_info(self, hall_info: DiningHallEnum, dtdate: Optional[str]):
+        hall_id = hall_info.value
+        meals = ["Breakfast", "Lunch", "Dinner"]
+        
+        food_items: Dict = {}
+        for meal in meals:
+            try:
+                params = {
+                    "sName": "UCONN Dining Services",
+                    "locationNum": hall_id,
+                    "naFlag": "1",
+                    "mealName": meal
+                }
+                if dtdate:
+                    params["dtdate"] = dtdate
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        "https://nutritionanalysis.dds.uconn.edu/longmenu.aspx",
+                        params=params,
+                        timeout=10.0
+                    )
+                    response.raise_for_status()  # Raise an exception for HTTP errors
+                    
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching dining hall {meal} menu for hall_id {hall_id}: {e}")
+                continue
+            meal_items = await self.get_and_parse_meal_items(response.text)
+
+            food_items[meal] = meal_items
+        
+        return {
+            "dishes": food_items
+        }
+    
+
+    async def get_and_parse_meal_items(self, html: str):
+        resp = []
+        if not html: return resp
+        
+        items = [line.strip() for line in html.splitlines() if "longmenucoldispname" in line]
+        for i in items:
+            try:
+                url = f"https://nutritionanalysis.dds.uconn.edu/" + i.split("'", 8)[7]
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(url=url)
+                    response.raise_for_status()  # Raise an exception for HTTP errors
+
+            except httpx.HTTPError:
+                return resp
+            
+            parsed = self.parse_meal_item(response.text)
+            resp.append(parsed)
+                
+        return resp
+                
+
+    def parse_meal_item(self, html: str):
+        """
+        returns a dict of the format:
+        {
+            "name": dish
+            "nutrition_facts": {
+                "serving_size": serving_size,
+                "calories": calories,
+                "allergens": [allergens]
+                "nutrients": [
+                    {}                
+                ]
+            }
+        }
+        """
+
+        def has_grams(g: str) -> bool:
+            """
+            from stackoverflow; handles the case where the html does not contain digits for amount
+            - "Vitamin D - mcg mcg" returns false
+            """
+            return any(char.isdigit() for char in g)
+        
+        def normalize_nutrient(n: str) -> str:
+            """
+            this is a hack
+            """
+            tokens = n.split()
+            one_normal = f"{tokens[0].lower()}"
+            two_normal = f"{tokens[0].lower()}_{tokens[1].lower().strip('.')}"
+            one_list = {"cholesterol", "sodium", "protein", "calcium", "iron", "potassium"}
+            two_list = {"total_fat", "total_carbohydrate", "saturated_fat", "dietary_fiber", "trans_fat", "total_sugars", "vitamin_d"}
+            if one_normal in one_list:
+                return one_normal
+            elif two_normal in two_list:
+                return two_normal
+            else:
+                return "added_sugars"
+
+        replace_with_coconut = "Our bakery uses coconut (a tree nut)." # this is stupid, just say COCONUT UCONN!!!!!!
+        item: Dict = {}
+        if not html: return item
+
+        soup = BeautifulSoup(html, 'html.parser')
+
+        # invalid item
+        if soup.find(class_="labelnotavailable") is not None:
+            return item
+
+        item["name"] = soup.find(class_="labelrecipe").get_text()
+        item["nutrition_facts"] = {}
+        item["nutrition_facts"]["serving_size"] = soup.find_all(class_="nutfactsservsize")[1].get_text().lower()
+        item["nutrition_facts"]["calories"] = int(soup.find(class_="nutfactscaloriesval").get_text())
+        item["nutrition_facts"]["allergens"] = soup.find(class_="labelallergensvalue").get_text().replace(replace_with_coconut, "Coconut").split(', ')
+
+        nutrients = soup.find_all(class_="nutfactstopnutrient")
+        for nutrient, daily_value in batched(nutrients, 2):
+            template: dict = {}
+            n: str = f"{nutrient.get_text()}".strip("\xa0")
+            d: str = daily_value.get_text(strip=True)
+            n_normal: str = normalize_nutrient(n)
+
+            grams = n.split()[1] if "Added Sugars" in n else n.split()[-1]
+
+            grams_bool = has_grams(grams)
+            if "Trans Fat" in n:
+                template["amount"] = grams if grams_bool else "0g"
+                template["daily_value"] = "0%"
+            elif "Vitamin D" in n:
+                template["amount"] = grams if grams_bool else "0mcg"
+                template["daily_value"] = "0%" if d == "" else d
+            elif "Potassium" in n:
+                template["amount"] = grams if grams_bool else "0mg"
+                template["daily_value"] = "0%" if d == "" else d
+            elif "Total Sugars" in n:
+                template["amount"] = grams
+                template["daily_value"] = f"{round((float(grams.strip('g')) / 50) * 100)}%" if grams_bool else "~%"
+            elif "Protein" in n:
+                template["amount"] = grams
+                template["daily_value"] = f"{round((float(grams.strip('g')) * 0.415) / 50 * 100)}%" if grams_bool else "~%"
+            else:
+                template["amount"] = grams
+                template["daily_value"] = d
+            
+            item["nutrition_facts"][n_normal] = template
+
+        return item
+
 
     async def get_dining_hall_menu(self, hall_info: DiningHallEnum, dtdate: Optional[str]):
         """
@@ -36,13 +185,12 @@ class ParseDishes:
             params = {
                 "sName": "UCONN Dining Services",
                 "locationNum": hall_id,
-                "locationName": hall_name,
+                "locationName": hall_name, # NOTE: this param is meaningless; themenu is dependent on locationNum
                 "naFlag": "1",
                 "myaction": "read"
             }
             if dtdate:
                 params["dtdate"] = dtdate
-            
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     "https://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",

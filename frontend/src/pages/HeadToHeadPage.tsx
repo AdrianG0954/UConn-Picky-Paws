@@ -144,7 +144,7 @@ export function HeadToHead() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-10 xl:max-w-[78rem]">
         <header className="mb-6 text-center md:mb-10">
           <h1 className="text-4xl font-semibold tracking-tight text-uconn-navy sm:text-5xl md:text-6xl">
             Picky Paws
@@ -205,30 +205,58 @@ export function HeadToHead() {
 
         {pair ? (
           <>
-            <div className="mb-6 grid grid-cols-1 items-stretch gap-y-4 md:mb-10 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 md:gap-y-6 lg:gap-x-20">
-              <DishCard
-                dish={pair[0]}
-                selected={selectedIndex === 0}
-                disabled={busy}
-                onSelect={onSelectCard0}
-                onShowNutrition={onShowNutrition0}
-                showElo={showEloOnCards}
-                eloMotion={elo0.eloMotion}
-                eloFadeIn={elo0.eloFadeIn}
-                outcomeGlow={elo0.outcomeGlow}
-              />
+            <div className="mb-6 grid grid-cols-1 items-stretch gap-y-4 md:mb-10 md:grid-cols-[1fr_auto_1fr] md:gap-x-8 md:gap-y-6 lg:gap-x-12 lg:gap-y-6">
+              <div className="min-w-0">
+                <DishCard
+                  dish={pair[0]}
+                  selected={selectedIndex === 0}
+                  disabled={busy}
+                  onSelect={onSelectCard0}
+                  onShowNutrition={onShowNutrition0}
+                  showElo={showEloOnCards}
+                  eloMotion={
+                    eloLockIn
+                      ? eloLockIn.winnerSlot === 0
+                        ? { from: eloLockIn.winnerFrom, to: eloLockIn.winnerTo }
+                        : { from: eloLockIn.loserFrom, to: eloLockIn.loserTo }
+                      : undefined
+                  }
+                  eloFadeIn={cantDecideElo && !eloLockIn}
+                  outcomeGlow={
+                    eloLockIn
+                      ? eloLockIn.winnerSlot === 0
+                        ? "winner"
+                        : "loser"
+                      : undefined
+                  }
+                />
+              </div>
               <PairSelectionArrow selectedIndex={selectedIndex} />
-              <DishCard
-                dish={pair[1]}
-                selected={selectedIndex === 1}
-                disabled={busy}
-                onSelect={onSelectCard1}
-                onShowNutrition={onShowNutrition1}
-                showElo={showEloOnCards}
-                eloMotion={elo1.eloMotion}
-                eloFadeIn={elo1.eloFadeIn}
-                outcomeGlow={elo1.outcomeGlow}
-              />
+              <div className="min-w-0">
+                <DishCard
+                  dish={pair[1]}
+                  selected={selectedIndex === 1}
+                  disabled={busy}
+                  onSelect={onSelectCard1}
+                  onShowNutrition={onShowNutrition1}
+                  showElo={showEloOnCards}
+                  eloMotion={
+                    eloLockIn
+                      ? eloLockIn.winnerSlot === 1
+                        ? { from: eloLockIn.winnerFrom, to: eloLockIn.winnerTo }
+                        : { from: eloLockIn.loserFrom, to: eloLockIn.loserTo }
+                      : undefined
+                  }
+                  eloFadeIn={cantDecideElo && !eloLockIn}
+                  outcomeGlow={
+                    eloLockIn
+                      ? eloLockIn.winnerSlot === 1
+                        ? "winner"
+                        : "loser"
+                      : undefined
+                  }
+                />
+              </div>
             </div>
 
             <div className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-4 md:gap-6">

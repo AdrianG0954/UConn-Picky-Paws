@@ -15,5 +15,6 @@ greenlet==3.3.2
 # Utilities
 python-dotenv==1.2.1
 httpx==0.28.1
+beautifulsoup4==4.14.3
 
 websockets==16.0

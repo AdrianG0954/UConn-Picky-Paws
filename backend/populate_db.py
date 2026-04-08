@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from sqlalchemy.dialects.postgresql import insert
 
@@ -14,6 +15,7 @@ async def populate_db():
     nutrition api for all days of the week and only updates the database
     with the latest unique menu items.
     """
+
     async def fetch_and_update(hall: DiningHallEnum):
         async with _db_session_maker() as db_session:
             dining_hall_repo = DiningHallRepository(db_session)
@@ -32,7 +34,7 @@ async def populate_db():
             await db_session.flush()
 
             # we need to change to do this for the rest of the week as well
-            resp = await parse_dishes_service.get_dining_hall_menu(hall, dtdate=None)
+            resp = await parse_dishes_service.get_dining_hall_menu_with_nutritional_info(hall, dtdate=None)
             
             # Collect all dishes to insert
             dishes_to_insert = []
@@ -40,8 +42,8 @@ async def populate_db():
                 for dish in resp["dishes"][meal_type]:
                     dishes_to_insert.append({
                         "dining_hall_id": dining_hall_id,
-                        "name": dish,
-                        "nutrition_info": {},  # TODO: populate this with actual nutrition info
+                        "name": dish['name'],
+                        "nutrition_info": dish['nutrition_facts'],
                         "elo_rating": 1000.0,  # default elo rating
                     })
             
