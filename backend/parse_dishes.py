@@ -124,10 +124,11 @@ class ParseDishes:
             else:
                 return "added_sugars"
 
+        if not html: 
+            return {"name": "Unknown", "nutrition_facts": {}}
+
         replace_with_coconut = "Our bakery uses coconut (a tree nut)." # this is stupid, just say COCONUT UCONN!!!!!!
         item: Dict = {}
-        if not html: return item
-
         soup = BeautifulSoup(html, 'html.parser')
 
         # invalid item; happens when dining halls have a "Manager's Choice" option
