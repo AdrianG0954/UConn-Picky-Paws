@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 from sqlalchemy.dialects.postgresql import insert
 
