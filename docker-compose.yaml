@@ -1,7 +1,7 @@
 services:
   database:
     image: postgres:18.1-alpine
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - "5432:5432"
     env_file:
@@ -17,7 +17,7 @@ services:
     #   - sdp_test_db_data:/var/lib/postgresql # use defined volume
 
   backend:
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -38,7 +38,7 @@ services:
       - .:/app # Mount the current directory to /app in the container
 
   frontend:
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: ./frontend
       dockerfile: Dockerfile
