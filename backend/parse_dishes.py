@@ -1,14 +1,15 @@
-# pyright: reportOptionalMemberAccess=false
-
+import asyncio
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from itertools import batched
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
 from bs4 import BeautifulSoup
 
 from backend.server import logger
+
+# global limit to concurrent requests (to not overload the network)
+_nutrition_http_sem = asyncio.Semaphore(10)
 
 
 class DiningHallEnum(Enum):
@@ -23,69 +24,92 @@ class DiningHallEnum(Enum):
 
 
 class ParseDishes:
-    def __init__(self):
-        pass
 
-    async def get_dining_hall_menu_with_nutritional_info(self, hall_info: DiningHallEnum, dtdate: Optional[str]):
+    async def get_dining_hall_menu_with_nutritional_info(self, hall_info: DiningHallEnum, dtdate: Optional[str]) -> Dict[str, Any]:
+        """
+        Fetches the menu and nutritional information for the given dining hall and date.
+        """
         hall_id = hall_info.value
-        meals = ["Breakfast", "Lunch", "Dinner"]
-        
-        food_items: Dict = {}
-        for meal in meals:
-            try:
+        meal_types = ["Breakfast", "Lunch", "Dinner"]
+        food_items = {}
+
+        # define the limits for this halls menu requests 
+        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
+        timeout = httpx.Timeout(60.0)
+        async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
+
+            async def fetch_hall_menu(meal_type: str) -> None:
+                """
+                makes the request to get the menu for the given meal type
+                """
                 params = {
                     "sName": "UCONN Dining Services",
                     "locationNum": hall_id,
                     "naFlag": "1",
-                    "mealName": meal
+                    "mealName": meal_type,
                 }
                 if dtdate:
                     params["dtdate"] = dtdate
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        "https://nutritionanalysis.dds.uconn.edu/longmenu.aspx",
-                        params=params,
-                        timeout=10.0
-                    )
-                    response.raise_for_status()  # Raise an exception for HTTP errors
-                    
-            except httpx.HTTPError as e:
-                logger.error(f"Error fetching dining hall {meal} menu for hall_id {hall_id}: {e}")
-                continue
-            meal_items = await self.get_and_parse_meal_items(response.text)
 
-            food_items[meal] = meal_items
-        
+                try:
+                    async with _nutrition_http_sem:
+                        response = await client.get(
+                            "https://nutritionanalysis.dds.uconn.edu/longmenu.aspx",
+                            params=params,
+                        )
+                    response.raise_for_status()
+
+                    # pass client to be used in the fetch_nutritional_info_and_parse function
+                    meal_items = await self.fetch_nutritional_info_and_parse(response.text, client)
+                    food_items[meal_type] = meal_items
+                except Exception as e:
+                    logger.warning(f"Error fetching {meal_type}: {type(e).__name__}")
+
+            tasks = [fetch_hall_menu(meal_type) for meal_type in meal_types]
+            await asyncio.gather(*tasks, return_exceptions=True)
+
         return {
             "dishes": food_items
         }
-    
 
-    async def get_and_parse_meal_items(self, html: str):
+    async def fetch_nutritional_info_and_parse(self, html: str, client: httpx.AsyncClient) -> list[Dict[str, Any]]:
+        """
+        fetches the nutritional information for each dish in the menu
+        """
         resp = []
-        if not html: return resp
-        
-        items = [line.strip() for line in html.splitlines() if "longmenucoldispname" in line]
-        for i in items:
+        if not html:
+            return resp
+
+        async def fetch_nutrition_info(dish: str) -> Optional[Dict[str, Any]]:
+            """
+            fetches the nutritional information for the given dish
+            """
+            dish = dish.split("'", 8)[7].strip()
+            url = f"https://nutritionanalysis.dds.uconn.edu/" + dish
             try:
-                url = f"https://nutritionanalysis.dds.uconn.edu/" + i.split("'", 8)[7]
-                async with httpx.AsyncClient() as client:
+                async with _nutrition_http_sem:
                     response = await client.get(url=url)
-                    response.raise_for_status()  # Raise an exception for HTTP errors
+                response.raise_for_status()
 
-            except httpx.HTTPError:
-                return resp
-            
-            parsed = self.parse_meal_item(response.text)
+                parsed = self.parse_meal_item(response.text)
+            except Exception as e:
+                logger.warning(f"Error fetching {url}: {type(e).__name__}")
+                return None
 
-            if parsed['name'] == "Unknown": continue # We do not want Unknowns in our DB
+            return parsed if parsed["name"] != "Unknown" else None
 
-            resp.append(parsed)
-                
+        items = [line.strip() for line in html.splitlines() if "longmenucoldispname" in line]
+        tasks = [fetch_nutrition_info(item) for item in items]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, dict):
+                resp.append(result)
+
         return resp
                 
 
-    def parse_meal_item(self, html: str):
+    def parse_meal_item(self, html: str) -> Dict[str, Any]:
         """
         returns a dict of the format:
         {
@@ -135,11 +159,21 @@ class ParseDishes:
         if soup.find(class_="labelnotavailable") is not None:
             return {"name": "Unknown", "nutrition_facts": {}}
 
-        item["name"] = soup.find(class_="labelrecipe").get_text()
+        name = soup.find(class_="labelrecipe")
+        if name is None:
+            item["name"] = "Unknown"
+        else:
+            item["name"] = name.get_text().strip()
+
         item["nutrition_facts"] = {}
-        item["nutrition_facts"]["serving_size"] = soup.find_all(class_="nutfactsservsize")[1].get_text().lower()
-        item["nutrition_facts"]["calories"] = int(soup.find(class_="nutfactscaloriesval").get_text())
-        item["nutrition_facts"]["allergens"] = soup.find(class_="labelallergensvalue").get_text().replace(replace_with_coconut, "Coconut").split(', ')
+        serving_sizes = soup.find_all(class_="nutfactsservsize")
+        item["nutrition_facts"]["serving_size"] = serving_sizes[1].get_text().lower() if len(serving_sizes) > 1 else "Unknown"
+
+        cal_val = soup.find(class_="nutfactscaloriesval")
+        item["nutrition_facts"]["calories"] = int(cal_val.get_text()) if cal_val else 0
+
+        allergens = soup.find(class_="labelallergensvalue")
+        item["nutrition_facts"]["allergens"] = allergens.get_text().replace(replace_with_coconut, "Coconut").split(', ') if allergens else []
 
         nutrients = soup.find_all(class_="nutfactstopnutrient")
         for nutrient, daily_value in batched(nutrients, 2):
@@ -148,7 +182,11 @@ class ParseDishes:
             d: str = daily_value.get_text(strip=True)
             n_normal: str = normalize_nutrient(n)
 
-            grams = n.split()[1] if "Added Sugars" in n else n.split()[-1]
+            n_split = n.split()
+            if "Added Sugars" in n:
+                grams = n_split[1] if len(n_split) > 1 else "0g"
+            else:
+                grams = n_split[-1] if len(n_split) > 0 else "0g"
 
             grams_bool = has_grams(grams)
             if "Trans Fat" in n:
@@ -175,7 +213,7 @@ class ParseDishes:
         return item
 
 
-    async def get_dining_hall_menu(self, hall_info: DiningHallEnum, dtdate: Optional[str]):
+    async def get_dining_hall_menu(self, hall_info: DiningHallEnum, dtdate: Optional[str]) -> Dict[str, Any]:
         """
         Fetches the dining hall menu. Fetches today's menu if 'dtdate' is not provided.
 
@@ -184,36 +222,41 @@ class ParseDishes:
         hall_name = hall_info.name.lower().replace("_", " ")
         hall_id = hall_info.value
 
+        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
+        timeout = httpx.Timeout(60.0)
         try:
-            params = {
-                "sName": "UCONN Dining Services",
-                "locationNum": hall_id,
-                "locationName": hall_name, # NOTE: this param is meaningless; themenu is dependent on locationNum
-                "naFlag": "1",
-                "myaction": "read"
-            }
-            if dtdate:
-                params["dtdate"] = dtdate
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    "https://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
-                    params=params,
-                    timeout=10.0
-                )
-                response.raise_for_status()  # Raise an exception for HTTP errors
+            async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
+                params = {
+                    "sName": "UCONN Dining Services",
+                    "locationNum": hall_id,
+                    "locationName": hall_name,  # NOTE: meaningless; menu depends on locationNum
+                    "naFlag": "1",
+                    "myaction": "read",
+                }
+                if dtdate:
+                    params["dtdate"] = dtdate
 
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching dining hall menu for hall_id {hall_id}: {e}")
+                async with _nutrition_http_sem:
+                    response = await client.get(
+                        "https://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
+                        params=params,
+                    )
+                response.raise_for_status()
+
+        except Exception as e:
+            logger.warning(f"Error fetching menu for {hall_name}: {type(e).__name__}")
             return {"dishes": {}}
 
         food_items = self.parse_food_items(response.text)
-
         return {
             "dishes": food_items,
         }
 
 
     def parse_food_items(self, html: str) -> Dict:
+        """
+        Parses the food items from the HTML of the dining hall menu.
+        """
         resp: Dict = {}
         if not html:
             return resp
@@ -260,3 +303,4 @@ class ParseDishes:
         resp["dinner"] = dinner_items
 
         return resp
+ 

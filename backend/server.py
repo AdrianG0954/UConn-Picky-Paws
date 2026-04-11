@@ -10,6 +10,11 @@ from backend.ws import ConnectionManager
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+# Configure logger to only show warnings and above.
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 app = FastAPI()
 app.state.connection_manager = ConnectionManager()

@@ -20,8 +20,8 @@ COPY . .
 RUN chmod +x entry.sh
 
 ENTRYPOINT ["./entry.sh"]
-# Expose the port
 
+# Expose the port
 EXPOSE 8000
 
 # Run the application

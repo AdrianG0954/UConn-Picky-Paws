@@ -129,7 +129,8 @@ async def get_menu(
         raise HTTPException(
             status_code=404, 
             detail=f"Dining hall '{hall_name}' not found"
-        ) 
+        )
+
     try:
         return await ParseDishes().get_dining_hall_menu(hall_info, dtdate)
     except Exception as exc:
