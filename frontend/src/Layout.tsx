@@ -13,8 +13,7 @@ function PageFallback() {
 
 export function Layout() {
   const { pathname } = useLocation();
-  const showPawBackdrop =
-    pathname === "/rank" || pathname === "/leaderboard";
+  const showPawBackdrop = pathname === "/rank" || pathname === "/leaderboard";
 
   return (
     <div className="flex min-h-svh flex-col bg-[#f4f6f8] text-zinc-900">
@@ -49,8 +48,11 @@ export function Layout() {
       </main>
       <footer className="mt-auto border-t border-zinc-200 bg-white px-4 py-6 text-center">
         <p className="mx-auto max-w-3xl text-sm leading-relaxed text-zinc-600">
-          This site is made by UConn students and is no way affiliated with the
-          University of Connecticut.
+          This site is made by UConn students and is in no way affiliated with
+          the University.
+        </p>
+        <p className="mx-auto max-w-3xl text-sm leading-relaxed text-zinc-600">
+          All data is sourced from the University's dining services website.
         </p>
       </footer>
     </div>

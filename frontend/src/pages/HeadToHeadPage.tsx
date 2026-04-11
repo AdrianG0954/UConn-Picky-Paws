@@ -7,12 +7,12 @@ import { fetchRandomMeals, patchMealElo } from "../api";
 import { DishCard } from "../components/DishCard";
 import { NutritionModal } from "../components/NutritionModal";
 import { PairSelectionArrow } from "../components/PairSelectionArrow";
+import { ResetCountdown } from "../components/ResetCountdown";
 import { RankScopeBar } from "../components/RankScopeBar";
 import { useRankDiningHallScope } from "../hooks/useRankDiningHallScope";
 import type { DishInfo } from "../types/meals";
 import { errorMessage } from "../utils/errorMessage";
 import type { EloLockInState } from "../utils/headToHeadElo";
-import { dishCardEloForSlot } from "../utils/headToHeadElo";
 
 type Pair = [DishInfo, DishInfo];
 
@@ -135,9 +135,6 @@ export function HeadToHead() {
     }
   };
 
-  const elo0 = dishCardEloForSlot(0, eloLockIn, cantDecideElo);
-  const elo1 = dishCardEloForSlot(1, eloLockIn, cantDecideElo);
-
   /** Scope UI and dish loads only run once halls exist. */
   const hallsReadyWithOptions =
     scope.hallsStatus === "ready" && scope.hallOptions.length > 0;
@@ -145,13 +142,17 @@ export function HeadToHead() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-10 xl:max-w-[78rem]">
-        <header className="mb-6 text-center md:mb-10">
+        <header className="mb-4 text-center md:mb-8">
           <h1 className="text-4xl font-semibold tracking-tight text-uconn-navy sm:text-5xl md:text-6xl">
             Picky Paws
           </h1>
           <p className="mt-1 text-sm text-zinc-600 md:mt-2 md:text-base">
-            Rank your favorite UConn Dining Halls and their food!
+            Rank your favorite UConn Dining Halls and their weekly menus!
           </p>
+          <p className="text-xs text-zinc-600 mt-1 mb-[-15px]">
+            Menus are refreshed every Sunday at 12:00 AM.
+          </p>
+          <ResetCountdown />
         </header>
 
         {scope.hallsStatus === "loading" ? (

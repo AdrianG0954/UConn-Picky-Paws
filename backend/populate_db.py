@@ -38,45 +38,37 @@ async def populate_db():
                     raise ValueError(f"Dining hall '{normalized_name}' not found")
                 dining_hall_id = entry.id
 
-            # Flush to persist dining hall before making HTTP request
-            await db_session.flush()
+            await db_session.commit()
 
-            # we need to change to do this for the rest of the week as well
-            today = datetime.now().date()
-            dishes_dict = {}
+        today = datetime.now().date()
+        dishes_dict = {}
 
-            # sequentially fetch the menu to ease the load on the network
-            for i in range(7):
-                dtdate = (today + timedelta(days=i)).strftime("%m/%d/%Y")
-                resp = await parse_dishes_service.get_dining_hall_menu_with_nutritional_info(hall, dtdate=dtdate)
+        # sequentially fetch the menu to ease the load on the network
+        for i in range(7):
+            dtdate = (today + timedelta(days=i)).strftime("%m/%d/%Y")
+            resp = await parse_dishes_service.get_dining_hall_menu_with_nutritional_info(hall, dtdate=dtdate)
 
-                for meal_type in resp["dishes"]:
-                    for dish in resp["dishes"][meal_type]:
-                        # ensure duplicates are not stored
-                        dish_key = dish['name']
-                        if dish_key not in dishes_dict:
-                            dishes_dict[dish_key] = {
-                                "dining_hall_id": dining_hall_id,
-                                "name": dish['name'],
-                                "nutrition_info": dish['nutrition_facts'],
-                                "elo_rating": 1000.0,  # default elo rating
-                            }
+            for meal_type in resp["dishes"]:
+                for dish in resp["dishes"][meal_type]:
+                    # ensure duplicates are not stored
+                    dish_key = dish['name']
+                    if dish_key not in dishes_dict:
+                        dishes_dict[dish_key] = {
+                            "dining_hall_id": dining_hall_id,
+                            "name": dish['name'],
+                            "nutrition_info": dish['nutrition_facts'],
+                            "elo_rating": 1000.0,  # default elo rating
+                        }
 
-            dishes_to_insert = list(dishes_dict.values())
-
+        async with _db_session_maker() as db_session:
             # Batch insert all dishes at once
+            dishes_to_insert = list(dishes_dict.values())
             if dishes_to_insert:
-                now = datetime.now()
-                stmt = insert(Dishes).values(dishes_to_insert).on_conflict_do_update(
-                    index_elements=["dining_hall_id", "name"],
-                    set_={
-                        "active": True,
-                        "last_seen": now,
-                    }
+                stmt = insert(Dishes).values(dishes_to_insert).on_conflict_do_nothing(
+                    index_elements=["dining_hall_id", "name"]
                 )
                 await db_session.execute(stmt)
-
-            await db_session.commit()
+                await db_session.commit()
 
     async def fetch_and_update_bounded(hall: DiningHallEnum) -> None:
         # make sure we can only fetch the info for 2 dining halls at a time
@@ -89,40 +81,22 @@ async def populate_db():
         if isinstance(err, Exception):
             logger.exception(f"Error occurred during populate_db", exc_info=err)
 
-async def mark_old_dishes_inactive():
+
+async def purge_database():
     """
-    This marks dishes that have not been seen for the last 4 months (~17 weeks) as inactive.
-    We dont delete them in case they are seen again (to preserve their elo).
+    Deletes all dishes from the db so that we can populate it with this weeks menu.
     """
     async with _db_session_maker() as db_session:
-        four_months_ago = datetime.now() - timedelta(weeks=17)
-        stmt = (
-            update(Dishes)
-            .where((Dishes.last_seen < four_months_ago) & (Dishes.active == True))
-            .values(active=False)
-        )
-        await db_session.execute(stmt)
-        await db_session.commit()
-
-
-async def delete_inactive_dishes():
-    """
-    This deletes dishes that have been inactive for 8 months (~34 weeks).
-    """
-    async with _db_session_maker() as db_session:
-        eight_months_ago = datetime.now() - timedelta(weeks=34)
         stmt = (
             delete(Dishes)
-            .where((Dishes.last_seen < eight_months_ago) & (Dishes.active == False))
         )
         await db_session.execute(stmt)
         await db_session.commit()
 
 async def main():
     """Main entry point for running the script."""
+    await purge_database()
     await populate_db()
-    await delete_inactive_dishes()
-    await mark_old_dishes_inactive()
 
 if __name__ == "__main__":
     asyncio.run(main())

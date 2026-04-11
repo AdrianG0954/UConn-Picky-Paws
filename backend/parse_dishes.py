@@ -34,7 +34,7 @@ class ParseDishes:
         food_items = {}
 
         # define the limits for this halls menu requests 
-        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
+        limits = httpx.Limits(max_connections=50, max_keepalive_connections=20)
         timeout = httpx.Timeout(60.0)
         async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
 
