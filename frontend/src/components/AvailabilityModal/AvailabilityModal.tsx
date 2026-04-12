@@ -155,7 +155,7 @@ export function AvailabilityModal({
             height="auto"
             events={events}
             fixedWeekCount={false}
-            firstDay={1}
+            firstDay={0}
             dayMaxEventRows={false}
             expandRows
             eventContent={(eventInfo) => {

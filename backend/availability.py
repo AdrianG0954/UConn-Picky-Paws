@@ -44,7 +44,8 @@ def _normalize_food_name(name: str) -> str:
 
 def _get_current_week_dates(today: Optional[date] = None) -> list[date]:
     current_day = today or date.today()
-    week_start = current_day - timedelta(days=current_day.weekday())
+    days_since_sunday = (current_day.weekday() + 1) % 7
+    week_start = current_day - timedelta(days=days_since_sunday)
     return [week_start + timedelta(days=offset) for offset in range(7)]
 
 
