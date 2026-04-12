@@ -4,10 +4,16 @@ import logging
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
+from fastapi.security import HTTPBearer
 from backend.ws import ConnectionManager
 
 load_dotenv()
+
+CAS_BASE = "https://login.uconn.edu/cas"
+# service URL should be our frontend URL
+SERVICE_URL = os.getenv("SERVICE_URL", "http://localhost:5173/callback")
+CAS_NS = {"cas": "http://www.yale.edu/tp/cas"}
+security = HTTPBearer()
 
 logger = logging.getLogger(__name__)
 # Configure logger to only show warnings and above.
