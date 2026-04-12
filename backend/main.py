@@ -6,6 +6,7 @@ from fastapi import Depends, Query, Request, WebSocket
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.availability import FoodAvailabilityResponse, get_food_availability
 from backend.calculate_elo import CalculateElo, EloBody, EloUpdateResponse
 from backend.repository.dining_hall_repository import DiningHallSummary, DiningHallRepository
 from backend.helpers import (
@@ -138,4 +139,16 @@ async def get_menu(
         raise HTTPException(
             status_code=500, 
             detail="Internal server error while fetching menu"
+        )
+
+
+@app.get("/meals/availability/{food_item}", status_code=200, response_model=FoodAvailabilityResponse)
+async def get_meal_availability(food_item: str) -> FoodAvailabilityResponse:
+    try:
+        return await get_food_availability(food_item)
+    except Exception as exc:
+        logger.error(f"Error warming weekly menu cache for {food_item}: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching availability",
         )
