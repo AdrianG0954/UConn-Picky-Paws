@@ -1,4 +1,9 @@
-import type { DiningHallOption, DishInfo, RandomMealsResponse } from './types/meals'
+import type {
+  DiningHallOption,
+  DishInfo,
+  FoodAvailabilityResponse,
+  RandomMealsResponse,
+} from './types/meals'
 import type { EloPatchBody, EloUpdateResponse } from './types/elo'
 
 /** HTTP client for the FastAPI backend (Vite proxies `/api` to the server in dev). */
@@ -77,4 +82,15 @@ export async function patchMealElo(
 
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as EloUpdateResponse
+}
+
+export async function fetchMealAvailability(
+  foodItem: string,
+): Promise<FoodAvailabilityResponse> {
+  const res = await fetch(
+    `${API_PREFIX}/meals/availability/${encodeURIComponent(foodItem)}`,
+  )
+
+  if (!res.ok) throw new Error(await readError(res))
+  return (await res.json()) as FoodAvailabilityResponse
 }

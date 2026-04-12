@@ -80,8 +80,7 @@ type Props = {
   eloFadeIn?: boolean;
   /** Lock-in ELO animation: glow the rating number (green = winner, red = loser). */
   outcomeGlow?: "winner" | "loser";
-  // For opening availability modal
-  setIsAvailabilityModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onShowAvailability: () => void;
 };
 
 export const DishCard = memo(function DishCard({
@@ -94,7 +93,7 @@ export const DishCard = memo(function DishCard({
   eloMotion,
   eloFadeIn = false,
   outcomeGlow,
-  setIsAvailabilityModalOpen,
+  onShowAvailability,
 }: Props) {
   const [displayElo, setDisplayElo] = useState(dish.elo_rating);
   const [fadeEntered, setFadeEntered] = useState(false);
@@ -210,7 +209,7 @@ export const DishCard = memo(function DishCard({
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
-            setIsAvailabilityModalOpen(true);
+            onShowAvailability();
           }}
           className={`${cardTextActionClass} self-end sm:self-auto`}
         >
