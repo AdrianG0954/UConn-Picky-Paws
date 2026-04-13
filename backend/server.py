@@ -19,8 +19,14 @@ logging.basicConfig(
 app = FastAPI()
 app.state.connection_manager = ConnectionManager()
 
-# per-request database session
-_engine = create_async_engine(os.getenv("ASYNC_DATABASE_URL", ""))
+# creates a pool of 15 connections + 15 overflow connections = 30 connections MAX
+_engine = create_async_engine(
+    url=os.getenv("ASYNC_DATABASE_URL", ""),
+    pool_size=15,
+    max_overflow=15,
+    pool_pre_ping=True,
+)
+
 _db_session_maker = async_sessionmaker(bind=_engine, expire_on_commit=False)
 async def request_db_session():
     """Provide a transactional scope around a series of operations.""" 
