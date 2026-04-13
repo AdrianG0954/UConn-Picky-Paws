@@ -1,5 +1,7 @@
 import dayGridPlugin from "@fullcalendar/daygrid";
+import "@fullcalendar/daygrid/index.css";
 import type { EventInput } from "@fullcalendar/core";
+import "@fullcalendar/core/index.css";
 import FullCalendar from "@fullcalendar/react";
 import { useEffect, useState } from "react";
 
