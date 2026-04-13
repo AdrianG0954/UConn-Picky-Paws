@@ -113,32 +113,43 @@ async def _warm_current_week_menu_cache(
     )
 
 
-def _get_meal_availabilities(food_item: str, week_dates: list[date]) -> list[DayAvailability]:
+def _get_meal_availabilities(
+    food_item: str,
+    hall_info: DiningHallEnum,
+    week_dates: list[date],
+) -> list[DayAvailability]:
     normalized_food_item = _normalize_food_name(food_item)
+    hall_name = _hall_name_from_enum(hall_info)
     days: list[DayAvailability] = []
 
     for day in week_dates:
         dtdate = _format_menu_date(day)
         availabilities: list[AvailabilityEntry] = []
 
-        for hall_info in DiningHallEnum:
-            hall_name = _hall_name_from_enum(hall_info)
-            menu = _get_cached_menu(hall_name, dtdate) or {"dishes": {}}
-            dishes = menu.get("dishes", {})
+        menu = _get_cached_menu(hall_name, dtdate) or {"dishes": {}}
+        dishes = menu.get("dishes", {})
 
-            for meal_name in ("breakfast", "lunch", "dinner"):
-                meal_items = dishes.get(meal_name, [])
-                if any(_normalize_food_name(item) == normalized_food_item for item in meal_items):
-                    availabilities.append(
-                        AvailabilityEntry(meal=meal_name, dining_hall=hall_name)
-                    )
+        for meal_name in ("breakfast", "lunch", "dinner"):
+            meal_items = dishes.get(meal_name, [])
+            if any(_normalize_food_name(item) == normalized_food_item for item in meal_items):
+                availabilities.append(
+                    AvailabilityEntry(meal=meal_name, dining_hall=hall_name)
+                )
 
         days.append(DayAvailability(date=day.isoformat(), availabilities=availabilities))
 
     return days
 
 
-async def get_food_availability(food_item: str) -> FoodAvailabilityResponse:
+async def get_food_availability(
+    food_item: str,
+    hall_name: str,
+) -> FoodAvailabilityResponse:
+    try:
+        hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
+    except KeyError as exc:
+        raise ValueError(f"Dining hall '{hall_name}' not found") from exc
+
     week_dates = _get_current_week_dates()
     parse_dishes_service = ParseDishes()
 
@@ -148,5 +159,5 @@ async def get_food_availability(food_item: str) -> FoodAvailabilityResponse:
         food_item=food_item,
         week_start=week_dates[0].isoformat(),
         week_end=week_dates[-1].isoformat(),
-        days=_get_meal_availabilities(food_item, week_dates),
+        days=_get_meal_availabilities(food_item, hall_info, week_dates),
     )

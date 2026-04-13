@@ -86,9 +86,11 @@ export async function patchMealElo(
 
 export async function fetchMealAvailability(
   foodItem: string,
+  hallName: string,
 ): Promise<FoodAvailabilityResponse> {
+  const params = new URLSearchParams({ hall_name: hallName })
   const res = await fetch(
-    `${API_PREFIX}/meals/availability/${encodeURIComponent(foodItem)}`,
+    `${API_PREFIX}/meals/availability/${encodeURIComponent(foodItem)}?${params.toString()}`,
   )
 
   if (!res.ok) throw new Error(await readError(res))

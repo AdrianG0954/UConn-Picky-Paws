@@ -143,9 +143,14 @@ async def get_menu(
 
 
 @app.get("/meals/availability/{food_item}", status_code=200, response_model=FoodAvailabilityResponse)
-async def get_meal_availability(food_item: str) -> FoodAvailabilityResponse:
+async def get_meal_availability(
+    food_item: str,
+    hall_name: str = Query(description="Filter availability to a specific dining hall"),
+) -> FoodAvailabilityResponse:
     try:
-        return await get_food_availability(food_item)
+        return await get_food_availability(food_item, hall_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         logger.error(f"Error warming weekly menu cache for {food_item}: {exc}", exc_info=True)
         raise HTTPException(

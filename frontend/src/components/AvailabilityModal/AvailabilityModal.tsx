@@ -25,12 +25,14 @@ type Props = {
   isAvailabilityModalOpen: boolean;
   setIsAvailabilityModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   foodItem: string | null;
+  hallName: string | null;
 };
 
 export function AvailabilityModal({
   isAvailabilityModalOpen,
   setIsAvailabilityModalOpen,
   foodItem,
+  hallName,
 }: Props) {
   const [availability, setAvailability] =
     useState<FoodAvailabilityResponse | null>(null);
@@ -38,7 +40,7 @@ export function AvailabilityModal({
   const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAvailabilityModalOpen || !foodItem) {
+    if (!isAvailabilityModalOpen || !foodItem || !hallName) {
       return;
     }
 
@@ -49,7 +51,7 @@ export function AvailabilityModal({
       setRequestError(null);
 
       try {
-        const response = await fetchMealAvailability(foodItem);
+        const response = await fetchMealAvailability(foodItem, hallName);
         if (!cancelled) {
           setAvailability(response);
         }
@@ -70,7 +72,7 @@ export function AvailabilityModal({
     return () => {
       cancelled = true;
     };
-  }, [foodItem, isAvailabilityModalOpen]);
+  }, [foodItem, hallName, isAvailabilityModalOpen]);
 
   if (!isAvailabilityModalOpen) {
     return null;
@@ -101,7 +103,9 @@ export function AvailabilityModal({
               {foodItem ? `${foodItem} availability` : "Availability"}
             </h2>
             <p className="mt-2 text-sm text-zinc-600 md:text-base">
-              Current week across all dining halls.
+              {hallName
+                ? `Current week for ${titleCaseLabel(hallName)} dining hall.`
+                : "Current week for this dining hall."}
             </p>
           </div>
           <button

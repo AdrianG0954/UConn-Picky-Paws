@@ -28,6 +28,9 @@ export function HeadToHead() {
   const [availabilityFoodItem, setAvailabilityFoodItem] = useState<string | null>(
     null,
   );
+  const [availabilityHallName, setAvailabilityHallName] = useState<string | null>(
+    null,
+  );
 
   const [error, setError] = useState<string | null>(null);
   const clearScopeApplyError = useCallback(() => setError(null), []);
@@ -57,11 +60,13 @@ export function HeadToHead() {
   const onShowAvailability0 = useCallback(() => {
     if (!pair) return;
     setAvailabilityFoodItem(pair[0].dish_name);
+    setAvailabilityHallName(pair[0].dining_hall_name);
     setIsAvailabilityModalOpen(true);
   }, [pair]);
   const onShowAvailability1 = useCallback(() => {
     if (!pair) return;
     setAvailabilityFoodItem(pair[1].dish_name);
+    setAvailabilityHallName(pair[1].dining_hall_name);
     setIsAvailabilityModalOpen(true);
   }, [pair]);
 
@@ -309,6 +314,7 @@ export function HeadToHead() {
         isAvailabilityModalOpen={isAvailabilityModalOpen}
         setIsAvailabilityModalOpen={setIsAvailabilityModalOpen}
         foodItem={availabilityFoodItem}
+        hallName={availabilityHallName}
       />
     </div>
   );
