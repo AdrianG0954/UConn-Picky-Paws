@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from backend.server import logger
 
 # global limit to concurrent requests (to not overload the network)
-_nutrition_http_sem = asyncio.Semaphore(10)
+_nutrition_http_sem = asyncio.Semaphore(8)
 
 
 class DiningHallEnum(Enum):
@@ -34,7 +34,7 @@ class ParseDishes:
         food_items = {}
 
         # define the limits for this halls menu requests 
-        limits = httpx.Limits(max_connections=50, max_keepalive_connections=20)
+        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
         timeout = httpx.Timeout(60.0)
         async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
 
@@ -222,7 +222,7 @@ class ParseDishes:
         hall_name = hall_info.name.lower().replace("_", " ")
         hall_id = hall_info.value
 
-        limits = httpx.Limits(max_connections=50, max_keepalive_connections=20)
+        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
         timeout = httpx.Timeout(15.0)
         try:
             async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
@@ -236,11 +236,10 @@ class ParseDishes:
                 if dtdate:
                     params["dtdate"] = dtdate
 
-                async with _nutrition_http_sem:
-                    response = await client.get(
-                        "https://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
-                        params=params,
-                    )
+                response = await client.get(
+                    "https://nutritionanalysis.dds.uconn.edu/shortmenu.aspx",
+                    params=params,
+                )
                 response.raise_for_status()
 
         except Exception as e:

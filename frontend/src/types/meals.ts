@@ -24,7 +24,7 @@ export type DayAvailability = {
   availabilities: AvailabilityEntry[];
 };
 
-/** Matches backend `DishAvailabilityResponse` (GET /meals/availability/{food_item}). */
+/** Matches backend `DishAvailabilityResponse` (GET /meals/availability?dish_name=&hall_name=). */
 export type DishAvailabilityResponse = {
   dish_name: string;
   week_start: string;

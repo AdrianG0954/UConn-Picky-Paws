@@ -132,11 +132,13 @@ export async function fetchMealAvailability(
   foodItem: string,
   hallName: string,
 ): Promise<DishAvailabilityResponse> {
-  const params = new URLSearchParams({ hall_name: hallName })
-  const res = await fetch(
-    `${API_PREFIX}/meals/availability/${encodeURIComponent(foodItem)}?${params.toString()}`,
-    { headers: authHeaders() },
-  )
+  const params = new URLSearchParams({
+    dish_name: foodItem,
+    hall_name: hallName,
+  })
+  const res = await fetch(`${API_PREFIX}/meals/availability?${params.toString()}`, {
+    headers: authHeaders(),
+  })
 
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as DishAvailabilityResponse

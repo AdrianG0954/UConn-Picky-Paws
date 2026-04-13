@@ -219,11 +219,11 @@ async def websocket_leaderboard(
         return
 
 
-@app.get("/meals/availability/{food_item}", status_code=200, response_model=DishAvailabilityResponse)
+@app.get("/meals/availability", status_code=200, response_model=DishAvailabilityResponse)
 async def get_meal_availability(
-    food_item: str,
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    hall_name: str = Query(description="Filter availability to a specific dining hall"),
+    dish_name: str = Query(description="Dish name"),
+    hall_name: str = Query(description="Dining hall name"),
 ) -> DishAvailabilityResponse:
     try:
         hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
@@ -237,12 +237,12 @@ async def get_meal_availability(
         # Verify the user is authenticated 
         AuthService().verify_login_jwt(credentials)
 
-        return await get_dish_availability(food_item, hall_info)
+        return await get_dish_availability(dish_name, hall_info)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         logger.error(
-            f"Error fetching weekly availability for {food_item} in {hall_name}: {exc}",
+            f"Error fetching weekly availability for {dish_name} in {hall_name}: {exc}",
             exc_info=True,
         )
         raise HTTPException(
