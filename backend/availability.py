@@ -24,7 +24,7 @@ class DishAvailabilityResponse(BaseModel):
 
 
 # Limit concurrent requests to ease load on the API
-_availability_fetch_sem = asyncio.Semaphore(12)
+_availability_fetch_sem = asyncio.Semaphore(35)
 
 
 def _get_current_week_dates() -> List[date]:
