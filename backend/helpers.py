@@ -1,7 +1,7 @@
 """
 Shared Pydantic response models and DB helpers for meals and leaderboard endpoints.
 """
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 from pydantic import BaseModel
 
@@ -13,9 +13,9 @@ from database.dining_halls import DiningHalls
 
 
 def _merge_exclusions(
-    exclude_names: Optional[list[str]],
-    exclude_dining_hall_ids: Optional[list[UUID]],
-) -> list[tuple[str, UUID]]:
+    exclude_names: Optional[List[str]],
+    exclude_dining_hall_ids: Optional[List[UUID]],
+) -> List[Tuple[str, UUID]]:
     """
     Build a unique list of (name, dining_hall_id) to exclude.
     """
@@ -27,8 +27,8 @@ def _merge_exclusions(
         )
 
     # return only the unique exclusions
-    seen: set[tuple[str, UUID]] = set()
-    out: list[tuple[str, UUID]] = []
+    seen: Set[Tuple[str, UUID]] = set()
+    out: List[Tuple[str, UUID]] = []
     for name, hall_id in zip(names, hall_ids):
         if (name, hall_id) not in seen:
             seen.add((name, hall_id))
@@ -45,25 +45,25 @@ class DishInfo(BaseModel):
     dish_name: str
     dining_hall_id: UUID
     dining_hall_name: str
-    nutrition_info: dict[str, Any]
+    nutrition_info: Dict[str, Any]
     elo_rating: float
 
 class RandomMealsResponse(BaseModel):
-    meals: list[DishInfo]
+    meals: List[DishInfo]
 
 
 class LeaderboardEntry(BaseModel):
     name: str
     dining_hall_id: UUID
     dining_hall_name: str
-    nutrition_info: dict[str, Any]
+    nutrition_info: Dict[str, Any]
     elo: float
 
 async def get_leaderboard_entries(
     db_session: AsyncSession,
     limit: int = 100,
     dining_hall_id: Optional[UUID] = None,
-) -> list[LeaderboardEntry]:
+) -> List[LeaderboardEntry]:
     
     # Base statement for the global leaderboard query
     stmt = (
@@ -93,9 +93,9 @@ async def get_leaderboard_entries(
 async def get_random_meals_from_db(
     db_session: AsyncSession,
     count: int,
-    filter_dining_halls: list[str],
-    exclude_names: Optional[list[str]] = None,
-    exclude_dining_hall_ids: Optional[list[UUID]] = None,
+    filter_dining_halls: List[str],
+    exclude_names: Optional[List[str]] = None,
+    exclude_dining_hall_ids: Optional[List[UUID]] = None,
 ) -> RandomMealsResponse:
     """
     Two behaviors:

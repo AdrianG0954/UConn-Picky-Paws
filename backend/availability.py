@@ -1,6 +1,6 @@
 import asyncio
 from datetime import date, timedelta
-from typing import Dict, List, Set
+from typing import Any, Dict, List, Set, Tuple
 
 from backend.parse_dishes import DiningHallEnum, ParseDishes
 from pydantic import BaseModel
@@ -37,17 +37,18 @@ def _get_current_week_dates() -> List[date]:
     return [week_start + timedelta(days=offset) for offset in range(7)]
 
 
-async def get_dish_availability(dish_name: str, hall_info: DiningHallEnum) -> DishAvailabilityResponse: 
+async def get_dish_availability(
+    dish_name: str,
+    hall_info: DiningHallEnum,
+) -> DishAvailabilityResponse:
     """
     Checks if a given dish is available in the dining hall for the week.
     """
     week_dates = _get_current_week_dates()
     parse_dishes_service = ParseDishes()
 
-    async def fetch_menu(day: date) -> tuple[str, Dict]:
-        """
-        Concurrently fetches menu for specific day
-        """
+    async def fetch_menu(day: date) -> Tuple[str, Dict[str, Any]]:
+        """Concurrently fetches menu for specific day."""
         dtdate = day.strftime("%m/%d/%Y")
         async with _availability_fetch_sem:
             menu = await parse_dishes_service.get_dining_hall_menu(hall_info, dtdate)
@@ -90,11 +91,17 @@ def _get_meal_availabilities(
             meal_items: Set[str] = dishes.get(meal_name, set())
             if dish_name in meal_items:
                 availabilities.append(
-                    AvailabilityEntry(meal=meal_name, dining_hall=hall_name)
+                    AvailabilityEntry(
+                        meal=meal_name,
+                        dining_hall=hall_name,
+                    )
                 )
 
         days_available.append(
-            DayAvailability(date=day.isoformat(), availabilities=availabilities)
+            DayAvailability(
+                date=day.isoformat(),
+                availabilities=availabilities,
+            )
         )
 
     return days_available

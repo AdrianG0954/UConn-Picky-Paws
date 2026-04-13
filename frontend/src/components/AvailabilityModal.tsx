@@ -1,9 +1,7 @@
-import dayGridPlugin from "@fullcalendar/daygrid";
-import "@fullcalendar/daygrid/index.css";
 import type { EventInput } from "@fullcalendar/core";
-import "@fullcalendar/core/index.css";
+import dayGridPlugin from "@fullcalendar/daygrid";
 import FullCalendar from "@fullcalendar/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { fetchMealAvailability } from "../api";
 import type { DishAvailabilityResponse } from "../types/meals";
@@ -40,6 +38,19 @@ export function AvailabilityModal({
     useState<DishAvailabilityResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+
+  const onClose = useCallback(() => {
+    setIsAvailabilityModalOpen(false);
+  }, [setIsAvailabilityModalOpen]);
+
+  useEffect(() => {
+    if (!isAvailabilityModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isAvailabilityModalOpen, onClose]);
 
   useEffect(() => {
     if (!isAvailabilityModalOpen || !foodItem || !hallName) {
@@ -98,11 +109,24 @@ export function AvailabilityModal({
   const hasResults = events.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-[1.75rem] border border-zinc-200/80 bg-white p-5 shadow-2xl shadow-zinc-900/10 md:p-7">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-[1.75rem] border border-zinc-200/80 bg-white p-5 shadow-2xl shadow-zinc-900/10 md:p-7"
+        role="dialog"
+        aria-labelledby="availability-modal-title"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-uconn-navy md:text-3xl">
+            <h2
+              id="availability-modal-title"
+              className="text-2xl font-semibold tracking-tight text-uconn-navy md:text-3xl"
+            >
               {foodItem ? `${foodItem} availability` : "Availability"}
             </h2>
             <p className="mt-2 text-sm text-zinc-600 md:text-base">
@@ -113,7 +137,7 @@ export function AvailabilityModal({
           </div>
           <button
             type="button"
-            onClick={() => setIsAvailabilityModalOpen(false)}
+            onClick={onClose}
             className="rounded-xl px-3 py-2 text-sm font-medium text-uconn-navy hover:bg-uconn-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-uconn-navy focus-visible:ring-offset-2"
           >
             Close
@@ -150,7 +174,7 @@ export function AvailabilityModal({
 
         {!loading && !requestError && availability && !hasResults ? (
           <p className="mb-4 text-sm text-zinc-600">
-            This item is not available during this current week.
+            This item is not available this week.
           </p>
         ) : null}
 

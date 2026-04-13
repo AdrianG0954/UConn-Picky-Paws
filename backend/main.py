@@ -154,7 +154,7 @@ async def get_random_meals(
         )
         return response
     except ValueError as ve:
-        logger.error(f"Error fetching random meals: {ve}", exc_info=True)
+        logger.warning(f"Error fetching random meals: {ve}", exc_info=True)
         raise HTTPException(status_code=400, detail="Failed to fetch random meals")
     except HTTPException:
         raise
@@ -219,35 +219,10 @@ async def websocket_leaderboard(
         return
 
 
-@app.get("/meals/menu/{hall_name}", status_code=200)
-async def get_menu(
-    hall_name: str,
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    dtdate: Optional[str] = Query(default=None, description="Optionally fetch a specific date's menu. Format: MM/DD/YYYY"),
-) -> Dict:
-    try:
-        hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
-    except KeyError:
-        raise HTTPException(status_code=400, detail=f"Verify hall name {hall_name} is valid")
-
-    try:
-        # verify the user is authenticated (will raise an exception if not)
-        AuthService().verify_login_jwt(credentials)
-
-        return await ParseDishes().get_dining_hall_menu(hall_info, dtdate)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error(f"Error fetching menu for {hall_name}: {exc}", exc_info=True)
-        raise HTTPException(
-            status_code=500, 
-            detail="Internal server error while fetching menu"
-        )
-
-
 @app.get("/meals/availability/{food_item}", status_code=200, response_model=DishAvailabilityResponse)
 async def get_meal_availability(
     food_item: str,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     hall_name: str = Query(description="Filter availability to a specific dining hall"),
 ) -> DishAvailabilityResponse:
     try:
@@ -259,6 +234,9 @@ async def get_meal_availability(
         ) from exc
 
     try:
+        # Verify the user is authenticated 
+        AuthService().verify_login_jwt(credentials)
+
         return await get_dish_availability(food_item, hall_info)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

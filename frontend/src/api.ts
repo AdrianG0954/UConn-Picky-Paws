@@ -35,7 +35,9 @@ export function fetchCasCallback(ticket: string): Promise<CasCallbackResult> {
   if (hit) return hit
 
   const promise = (async (): Promise<CasCallbackResult> => {
-    const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`)
+    const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`, {
+      headers: authHeaders(),
+    })
     if (!res.ok) return { ok: false }
     const body = await res.text()
     if (!body.startsWith('Success:')) return { ok: false }
@@ -133,6 +135,7 @@ export async function fetchMealAvailability(
   const params = new URLSearchParams({ hall_name: hallName })
   const res = await fetch(
     `${API_PREFIX}/meals/availability/${encodeURIComponent(foodItem)}?${params.toString()}`,
+    { headers: authHeaders() },
   )
 
   if (!res.ok) throw new Error(await readError(res))
