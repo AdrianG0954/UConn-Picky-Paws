@@ -222,10 +222,9 @@ class ParseDishes:
         hall_name = hall_info.name.lower().replace("_", " ")
         hall_id = hall_info.value
 
-        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
-        timeout = httpx.Timeout(15.0)
+        timeout = httpx.Timeout(5.0)
         try:
-            async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 params = {
                     "sName": "UCONN Dining Services",
                     "locationNum": hall_id,
