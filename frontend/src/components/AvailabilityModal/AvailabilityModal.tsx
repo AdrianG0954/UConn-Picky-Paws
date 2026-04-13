@@ -21,6 +21,13 @@ function mealTone(meal: string): string {
   return "availability-event-dinner";
 }
 
+function getCurrentWeekStart(): string {
+  const today = new Date();
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  return weekStart.toISOString().slice(0, 10);
+}
+
 type Props = {
   isAvailabilityModalOpen: boolean;
   setIsAvailabilityModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -49,6 +56,7 @@ export function AvailabilityModal({
     const loadAvailability = async () => {
       setLoading(true);
       setRequestError(null);
+      setAvailability(null);
 
       try {
         const response = await fetchMealAvailability(foodItem, hallName);
@@ -155,7 +163,7 @@ export function AvailabilityModal({
           <FullCalendar
             plugins={[dayGridPlugin]}
             initialView="dayGridWeek"
-            initialDate={availability?.week_start}
+            initialDate={availability?.week_start ?? getCurrentWeekStart()}
             height="auto"
             events={events}
             fixedWeekCount={false}
