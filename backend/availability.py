@@ -1,6 +1,6 @@
 import asyncio
 from datetime import date, timedelta
-from typing import Any, Optional
+from typing import Dict, List, Set
 
 from backend.parse_dishes import DiningHallEnum, ParseDishes
 from pydantic import BaseModel
@@ -13,94 +13,88 @@ class AvailabilityEntry(BaseModel):
 
 class DayAvailability(BaseModel):
     date: str
-    availabilities: list[AvailabilityEntry]
+    availabilities: List[AvailabilityEntry]
 
 
-class FoodAvailabilityResponse(BaseModel):
-    food_item: str
+class DishAvailabilityResponse(BaseModel):
+    dish_name: str
     week_start: str
     week_end: str
-    days: list[DayAvailability]
+    days: List[DayAvailability]
 
 
-def _hall_name_from_enum(hall_info: DiningHallEnum) -> str:
-    return hall_info.name.lower().replace("_", " ")
+# Limit concurrent requests to ease load on the API
+_availability_fetch_sem = asyncio.Semaphore(12)
 
 
-def _format_menu_date(day: date) -> str:
-    return day.strftime("%m/%d/%Y")
-
-
-def _normalize_food_name(name: str) -> str:
-    return " ".join(name.casefold().split())
-
-
-def _get_current_week_start(today: Optional[date] = None) -> date:
-    current_day = today or date.today()
+def _get_current_week_dates() -> List[date]:
+    """
+    Gets the current week's dates (Sunday to Saturday).
+    """
+    current_day = date.today()
     days_since_sunday = (current_day.weekday() + 1) % 7
-    return current_day - timedelta(days=days_since_sunday)
-
-
-def _get_current_week_dates(today: Optional[date] = None) -> list[date]:
-    week_start = _get_current_week_start(today)
+    week_start = current_day - timedelta(days=days_since_sunday)
     return [week_start + timedelta(days=offset) for offset in range(7)]
 
 
-async def _fetch_week_menus(
-    parse_dishes_service: ParseDishes,
-    hall_info: DiningHallEnum,
-    week_dates: list[date],
-) -> list[dict[str, Any]]:
-    return await asyncio.gather(
-        *[
-            parse_dishes_service.get_dining_hall_menu(hall_info, _format_menu_date(day))
-            for day in week_dates
-        ]
+async def get_dish_availability(dish_name: str, hall_info: DiningHallEnum) -> DishAvailabilityResponse: 
+    """
+    Checks if a given dish is available in the dining hall for the week.
+    """
+    week_dates = _get_current_week_dates()
+    parse_dishes_service = ParseDishes()
+
+    async def fetch_menu(day: date) -> tuple[str, Dict]:
+        """
+        Concurrently fetches menu for specific day
+        """
+        dtdate = day.strftime("%m/%d/%Y")
+        async with _availability_fetch_sem:
+            menu = await parse_dishes_service.get_dining_hall_menu(hall_info, dtdate)
+        return dtdate, menu
+
+    # Fetch menus for the entire week
+    menu_results = await asyncio.gather(*[fetch_menu(day) for day in week_dates])
+    menus = dict(menu_results)
+
+    return DishAvailabilityResponse(
+        dish_name=dish_name,
+        week_start=week_dates[0].isoformat(),
+        week_end=week_dates[-1].isoformat(),
+        days=_get_meal_availabilities(dish_name, hall_info, menus, week_dates),
     )
 
 
 def _get_meal_availabilities(
-    food_item: str,
+    dish_name: str,
     hall_info: DiningHallEnum,
-    week_dates: list[date],
-    menus: list[dict[str, Any]],
-) -> list[DayAvailability]:
-    normalized_food_item = _normalize_food_name(food_item)
-    hall_name = _hall_name_from_enum(hall_info)
-    days: list[DayAvailability] = []
+    menus: Dict[str, Dict],
+    week_dates: List[date],
+) -> List[DayAvailability]:
+    """
+    Checks if a given dish is available in the dining hall for the week.
+    """
+    hall_name = hall_info.name.lower().replace("_", " ")
+    days_available: List[DayAvailability] = []
 
-    for day, menu in zip(week_dates, menus):
-        availabilities: list[AvailabilityEntry] = []
+    # Iterate over each day in the week
+    for day in week_dates:
+        dtdate = day.strftime("%m/%d/%Y")
+        availabilities: List[AvailabilityEntry] = []
+
+        menu = menus.get(dtdate, {"dishes": {}})
         dishes = menu.get("dishes", {})
 
+        # check if food item is available in any meal for the day
         for meal_name in ("breakfast", "lunch", "dinner"):
-            meal_items = dishes.get(meal_name, [])
-            if any(_normalize_food_name(item) == normalized_food_item for item in meal_items):
+            meal_items: Set[str] = dishes.get(meal_name, set())
+            if dish_name in meal_items:
                 availabilities.append(
                     AvailabilityEntry(meal=meal_name, dining_hall=hall_name)
                 )
 
-        days.append(DayAvailability(date=day.isoformat(), availabilities=availabilities))
+        days_available.append(
+            DayAvailability(date=day.isoformat(), availabilities=availabilities)
+        )
 
-    return days
-
-
-async def get_food_availability(
-    food_item: str,
-    hall_name: str,
-) -> FoodAvailabilityResponse:
-    try:
-        hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
-    except KeyError as exc:
-        raise ValueError(f"Dining hall '{hall_name}' not found") from exc
-
-    week_dates = _get_current_week_dates()
-    parse_dishes_service = ParseDishes()
-    menus = await _fetch_week_menus(parse_dishes_service, hall_info, week_dates)
-
-    return FoodAvailabilityResponse(
-        food_item=food_item,
-        week_start=week_dates[0].isoformat(),
-        week_end=week_dates[-1].isoformat(),
-        days=_get_meal_availabilities(food_item, hall_info, week_dates, menus),
-    )
+    return days_available

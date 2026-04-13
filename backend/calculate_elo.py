@@ -1,8 +1,6 @@
-"""
-Elo update logic and request/response models for PATCH /meals/elo.
-"""
 import math
 from uuid import UUID
+from typing import Tuple, Dict, Set
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -12,8 +10,6 @@ from database.dishes import Dishes
 
 
 class DishBody(BaseModel):
-	"""Identifies one row in ``dishes`` (composite PK: dining_hall_id + name)."""
-
 	model_config = ConfigDict(populate_by_name=True)
 
 	dining_hall_id: UUID = Field(
@@ -57,14 +53,12 @@ class CalculateElo:
 		# K-factor; how much to adjust the elo by; can be adjusted
 		outcome = 0.5 if request.draw else 1.0
 
-		loser_elo = await self.get_elo(
-			request.loser.name,
-			request.loser.dining_hall_id,
-		)
-		winner_elo = await self.get_elo(
-			request.winner.name,
-			request.winner.dining_hall_id,
-		)
+		# lock dishes for duration of the transaction
+		winner_pk = (request.winner.dining_hall_id, request.winner.name)
+		loser_pk = (request.loser.dining_hall_id, request.loser.name)
+		elos = await self.lock_elos_for_update({winner_pk, loser_pk})
+		winner_elo = elos[winner_pk]
+		loser_elo = elos[loser_pk]
 
 		probability_winner = self.calculate_probability(loser_elo, winner_elo)
 		probability_loser = self.calculate_probability(winner_elo, loser_elo)
@@ -84,6 +78,33 @@ class CalculateElo:
 		)
 
 		return winner_new_elo, loser_new_elo
+
+
+	async def lock_elos_for_update(self, pks: Set[Tuple]) -> dict[Tuple, float]:
+		"""
+		Locks each dish row for duration of the transaction. 
+		We do this to prevent race conditions with updates to the same dish.
+		"""
+		# sort to prevent possible deadlock
+		ordered = sorted(pks)
+		out: Dict[Tuple, float] = {}
+		for dining_hall_id, name in ordered:
+			stmt = (
+				select(Dishes.elo_rating)
+				.where(
+					Dishes.dining_hall_id == dining_hall_id,
+					Dishes.name == name,
+				)
+				.with_for_update()
+			)
+			res = await self.db_session.execute(stmt)
+			elo = res.scalar_one_or_none()
+			if elo is None:
+				raise ValueError(
+					f"Elo rating not found for '{name}' in dining hall {dining_hall_id}."
+				)
+			out[(dining_hall_id, name)] = float(elo)
+		return out
 
 
 	async def update_elo(
@@ -106,17 +127,3 @@ class CalculateElo:
 			raise RuntimeError(
 				f"Failed to update Elo rating for '{name}' in dining hall {dining_hall_id}: {str(e)}"
 			)
-
-	async def get_elo(self, name: str, dining_hall_id: UUID) -> float:
-		"""Load current Elo; WHERE must match the full PK so the result is a single row."""
-		stmt = select(Dishes.elo_rating).where(
-			Dishes.dining_hall_id == dining_hall_id,
-			Dishes.name == name,
-		)
-		res = await self.db_session.execute(stmt)
-		elo = res.scalar_one_or_none()
-		if elo is None:
-			raise ValueError(
-				f"Elo rating not found for '{name}' in dining hall {dining_hall_id}."
-			)
-		return elo

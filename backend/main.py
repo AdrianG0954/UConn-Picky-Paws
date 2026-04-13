@@ -6,7 +6,7 @@ from fastapi import Depends, Query, Request, WebSocket
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.availability import FoodAvailabilityResponse, get_food_availability
+from backend.availability import DishAvailabilityResponse, get_dish_availability
 from backend.calculate_elo import CalculateElo, EloBody, EloUpdateResponse
 from backend.repository.dining_hall_repository import DiningHallSummary, DiningHallRepository
 from backend.helpers import (
@@ -61,9 +61,11 @@ async def update_elo(
             loser_new_elo=loser_new_elo,
         )
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.error(f"Error updating Elo: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to update Elo")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.error(f"Error updating Elo: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while updating Elo")
 
 
 @app.get("/meals/random", status_code=200)
@@ -89,9 +91,11 @@ async def get_random_meals(
         )
         return response
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.error(f"Error fetching random meals: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to fetch random meals")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching random meals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while fetching random meals")
 
 
 @app.get("/dining-halls", status_code=200, response_model=list[DiningHallSummary])
@@ -101,9 +105,11 @@ async def dining_halls(
     try:
         return await DiningHallRepository(db_session).get_dining_halls()
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.error(f"Error fetching dining halls: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to fetch dining halls")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.error(f"Error fetching dining halls: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while fetching dining halls")
 
 
 @app.websocket("/ws/leaderboard")
@@ -142,13 +148,21 @@ async def get_menu(
         )
 
 
-@app.get("/meals/availability/{food_item}", status_code=200, response_model=FoodAvailabilityResponse)
+@app.get("/meals/availability/{food_item}", status_code=200, response_model=DishAvailabilityResponse)
 async def get_meal_availability(
     food_item: str,
     hall_name: str = Query(description="Filter availability to a specific dining hall"),
-) -> FoodAvailabilityResponse:
+) -> DishAvailabilityResponse:
     try:
-        return await get_food_availability(food_item, hall_name)
+        hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dining hall '{hall_name}' not found",
+        ) from exc
+
+    try:
+        return await get_dish_availability(food_item, hall_info)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:

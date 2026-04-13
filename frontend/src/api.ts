@@ -1,7 +1,7 @@
 import type {
   DiningHallOption,
+  DishAvailabilityResponse,
   DishInfo,
-  FoodAvailabilityResponse,
   RandomMealsResponse,
 } from './types/meals'
 import type { EloPatchBody, EloUpdateResponse } from './types/elo'
@@ -87,12 +87,12 @@ export async function patchMealElo(
 export async function fetchMealAvailability(
   foodItem: string,
   hallName: string,
-): Promise<FoodAvailabilityResponse> {
+): Promise<DishAvailabilityResponse> {
   const params = new URLSearchParams({ hall_name: hallName })
   const res = await fetch(
     `${API_PREFIX}/meals/availability/${encodeURIComponent(foodItem)}?${params.toString()}`,
   )
 
   if (!res.ok) throw new Error(await readError(res))
-  return (await res.json()) as FoodAvailabilityResponse
+  return (await res.json()) as DishAvailabilityResponse
 }

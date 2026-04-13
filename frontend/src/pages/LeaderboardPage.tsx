@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchDiningHalls } from "../api";
-import { AvailabilityModal } from "../components/AvailabilityModal/AvailabilityModal";
+import { AvailabilityModal } from "../components/AvailabilityModal";
 import { LeaderboardPodium } from "../components/LeaderboardPodium";
 import { LeaderboardRow } from "../components/LeaderboardRow";
 import { NutritionModal } from "../components/NutritionModal";
@@ -61,8 +61,12 @@ export function LeaderboardPage() {
   const [tabError, setTabError] = useState<string | null>(null);
   const [nutritionDish, setNutritionDish] = useState<DishInfo | null>(null);
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
-  const [availabilityFoodItem, setAvailabilityFoodItem] = useState<string | null>(null);
-  const [availabilityHallName, setAvailabilityHallName] = useState<string | null>(null);
+  const [availabilityFoodItem, setAvailabilityFoodItem] = useState<
+    string | null
+  >(null);
+  const [availabilityHallName, setAvailabilityHallName] = useState<
+    string | null
+  >(null);
 
   const selectedTab =
     tabs.find((tab) => tab.key === selectedTabKey) ?? GLOBAL_TAB;
@@ -191,9 +195,9 @@ export function LeaderboardPage() {
       </div>
 
       <section
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
-          aria-label="Leaderboard table"
-        >
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
+        aria-label="Leaderboard table"
+      >
         {!loading && entries.length > 0 ? (
           <LeaderboardPodium
             entries={entries.slice(0, 3)}
@@ -237,7 +241,10 @@ export function LeaderboardPage() {
           )}
         </div>
       </section>
-      <NutritionModal dish={nutritionDish} onClose={() => setNutritionDish(null)} />
+      <NutritionModal
+        dish={nutritionDish}
+        onClose={() => setNutritionDish(null)}
+      />
       <AvailabilityModal
         isAvailabilityModalOpen={isAvailabilityModalOpen}
         setIsAvailabilityModalOpen={setIsAvailabilityModalOpen}

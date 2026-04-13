@@ -1,6 +1,6 @@
 import asyncio
 from enum import Enum
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Set
 from itertools import batched
 
 import httpx
@@ -222,8 +222,8 @@ class ParseDishes:
         hall_name = hall_info.name.lower().replace("_", " ")
         hall_id = hall_info.value
 
-        limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
-        timeout = httpx.Timeout(60.0)
+        limits = httpx.Limits(max_connections=50, max_keepalive_connections=20)
+        timeout = httpx.Timeout(15.0)
         try:
             async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
                 params = {
@@ -253,7 +253,7 @@ class ParseDishes:
         }
 
 
-    def parse_food_items(self, html: str) -> Dict:
+    def parse_food_items(self, html: str) -> Dict[str, Set[str]]:
         """
         Parses the food items from the HTML of the dining hall menu.
         """
@@ -266,19 +266,19 @@ class ParseDishes:
         dinner = "<div class=\"shortmenumeals\">Dinner</div>"
 
         components = html.split(breakfast)[1:]
-        breakfast_items = []
+        breakfast_items = set()
         for component in components: 
             item = "<div class='shortmenurecipes'>"
             component = component.split(item)
             for c in component: 
                 name = c.split("&nbsp;", 1)[0].strip().split(">")[-1]
                 if name:
-                    breakfast_items.append(name)
+                    breakfast_items.add(name.strip())
                 if lunch in c:
                     break # we have all breakfast items
         resp["breakfast"] = breakfast_items
 
-        lunch_items = []
+        lunch_items = set()
         components = html.split(lunch)[1:]
         for component in components:
             item = "<div class='shortmenurecipes'>"
@@ -286,12 +286,12 @@ class ParseDishes:
             for c in component:
                 name = c.split("&nbsp;", 1)[0].strip().split(">")[-1]
                 if name:
-                    lunch_items.append(name)
+                    lunch_items.add(name.strip())
                 if dinner in c:
                     break  # we have all lunch items
         resp["lunch"] = lunch_items
 
-        dinner_items = []
+        dinner_items = set()
         components = html.split(dinner)[1:]
         for component in components:
             item = "<div class='shortmenurecipes'>"
@@ -299,7 +299,7 @@ class ParseDishes:
             for c in component:
                 name = c.split("&nbsp;", 1)[0].strip().split(">")[-1]
                 if name:
-                    dinner_items.append(name)
+                    dinner_items.add(name.strip())
         resp["dinner"] = dinner_items
 
         return resp

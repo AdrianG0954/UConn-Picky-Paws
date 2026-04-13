@@ -3,9 +3,9 @@ import type { EventInput } from "@fullcalendar/core";
 import FullCalendar from "@fullcalendar/react";
 import { useEffect, useState } from "react";
 
-import { fetchMealAvailability } from "../../api";
-import type { FoodAvailabilityResponse } from "../../types/meals";
-import { errorMessage } from "../../utils/errorMessage";
+import { fetchMealAvailability } from "../api";
+import type { DishAvailabilityResponse } from "../types/meals";
+import { errorMessage } from "../utils/errorMessage";
 
 function titleCaseLabel(value: string): string {
   return value
@@ -19,13 +19,6 @@ function mealTone(meal: string): string {
   if (meal === "breakfast") return "availability-event-breakfast";
   if (meal === "lunch") return "availability-event-lunch";
   return "availability-event-dinner";
-}
-
-function getCurrentWeekStart(): string {
-  const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay());
-  return weekStart.toISOString().slice(0, 10);
 }
 
 type Props = {
@@ -42,7 +35,7 @@ export function AvailabilityModal({
   hallName,
 }: Props) {
   const [availability, setAvailability] =
-    useState<FoodAvailabilityResponse | null>(null);
+    useState<DishAvailabilityResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
@@ -53,11 +46,13 @@ export function AvailabilityModal({
 
     let cancelled = false;
 
-    const loadAvailability = async () => {
-      setLoading(true);
-      setRequestError(null);
-      setAvailability(null);
+    // Drop previous dish immediately so the calendar does not show stale events
+    // while the new request is in flight.
+    setAvailability(null);
+    setRequestError(null);
+    setLoading(true);
 
+    void (async () => {
       try {
         const response = await fetchMealAvailability(foodItem, hallName);
         if (!cancelled) {
@@ -73,9 +68,7 @@ export function AvailabilityModal({
           setLoading(false);
         }
       }
-    };
-
-    void loadAvailability();
+    })();
 
     return () => {
       cancelled = true;
@@ -159,36 +152,41 @@ export function AvailabilityModal({
           </p>
         ) : null}
 
-        <div className="availability-calendar rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3 md:p-4">
-          <FullCalendar
-            plugins={[dayGridPlugin]}
-            initialView="dayGridWeek"
-            initialDate={availability?.week_start ?? getCurrentWeekStart()}
-            height="auto"
-            events={events}
-            fixedWeekCount={false}
-            firstDay={0}
-            dayMaxEventRows={false}
-            expandRows
-            eventContent={(eventInfo) => {
-              const meal = String(eventInfo.event.extendedProps.meal ?? "");
-              const diningHall = String(
-                eventInfo.event.extendedProps.diningHall ?? "",
-              );
+        {availability ? (
+          <div className="availability-calendar rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3 md:p-4">
+            <FullCalendar
+              key={`${foodItem}:${hallName}`}
+              plugins={[dayGridPlugin]}
+              initialView="dayGridWeek"
+              initialDate={availability.week_start}
+              height="auto"
+              events={events}
+              fixedWeekCount={false}
+              firstDay={0}
+              dayMaxEventRows={false}
+              expandRows
+              eventContent={(eventInfo) => {
+                const meal = String(eventInfo.event.extendedProps.meal ?? "");
+                const diningHall = String(
+                  eventInfo.event.extendedProps.diningHall ?? "",
+                );
 
-              return (
-                <div className="availability-event-inner">
-                  <span className="availability-event-meal">{meal}</span>
-                  <span className="availability-event-hall">{diningHall}</span>
-                </div>
-              );
-            }}
-            headerToolbar={{
-              left: "title",
-              right: "",
-            }}
-          />
-        </div>
+                return (
+                  <div className="availability-event-inner">
+                    <span className="availability-event-meal">{meal}</span>
+                    <span className="availability-event-hall">
+                      {diningHall}
+                    </span>
+                  </div>
+                );
+              }}
+              headerToolbar={{
+                left: "title",
+                right: "",
+              }}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
