@@ -5,10 +5,50 @@ import type {
   RandomMealsResponse,
 } from './types/meals'
 import type { EloPatchBody, EloUpdateResponse } from './types/elo'
+import { getAccessToken } from './auth/session'
 
-/** HTTP client for the FastAPI backend (Vite proxies `/api` to the server in dev). */
+/** Base path for FastAPI (Vite dev proxy strips `/api` and forwards to the server). */
+export const API_PREFIX = '/api'
 
-const API_PREFIX = '/api'
+/** Headers for routes that require `Authorization: Bearer` (same JWT as after CAS callback). */
+export function authHeaders(json = false): Record<string, string> {
+  const h: Record<string, string> = {}
+  if (json) h['Content-Type'] = 'application/json'
+  const token = getAccessToken()
+  if (token) h.Authorization = `Bearer ${token}`
+  return h
+}
+
+/** Backend returns `Success: <jwt>` after CAS validates the ticket. */
+export type CasCallbackResult =
+  | { ok: true; accessToken: string }
+  | { ok: false }
+
+// CAS tickets are usually single-use; dedupe so React StrictMode does not issue two GET /callback calls for one ticket.
+const casCallbackInflight = new Map<string, Promise<CasCallbackResult>>()
+
+/**
+ * Calls FastAPI GET `/callback` with the ticket. UConn `serviceValidate` runs only on the server (`main.callback`).
+ */
+export function fetchCasCallback(ticket: string): Promise<CasCallbackResult> {
+  const hit = casCallbackInflight.get(ticket)
+  if (hit) return hit
+
+  const promise = (async (): Promise<CasCallbackResult> => {
+    const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`)
+    if (!res.ok) return { ok: false }
+    const body = await res.text()
+    if (!body.startsWith('Success:')) return { ok: false }
+    const accessToken = body.slice('Success:'.length).trim()
+    if (!accessToken) return { ok: false }
+    return { ok: true, accessToken }
+  })().finally(() => {
+    casCallbackInflight.delete(ticket)
+  })
+
+  casCallbackInflight.set(ticket, promise)
+  return promise
+}
 
 /** Maps a `DishInfo` from the UI to the PATCH /meals/elo dish object (backend `DishBody`). */
 function dishToEloPayload(dish: DishInfo): EloPatchBody['winner'] {
@@ -31,7 +71,7 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
-  const res = await fetch(`${API_PREFIX}/dining-halls`)
+  const res = await fetch(`${API_PREFIX}/dining-halls`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as DiningHallOption[]
 }
@@ -56,7 +96,9 @@ export async function fetchRandomMeals(
     }
   }
 
-  const res = await fetch(`${API_PREFIX}/meals/random?${params.toString()}`)
+  const res = await fetch(`${API_PREFIX}/meals/random?${params.toString()}`, {
+    headers: authHeaders(),
+  })
   if (!res.ok) throw new Error(await readError(res))
 
   const data = (await res.json()) as RandomMealsResponse
@@ -76,7 +118,7 @@ export async function patchMealElo(
 
   const res = await fetch(`${API_PREFIX}/meals/elo`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(body),
   })
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getAccessToken } from "../auth/session";
 import type {
   ConnectionState,
   LeaderboardTab,
@@ -9,7 +10,9 @@ import type {
 
 function buildWebSocketUrl(path: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}${path}`;
+  const token = getAccessToken();
+  const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `${protocol}//${window.location.host}${path}${qs}`;
 }
 
 /* Validators for incoming ws message (snapshot of leaderboard) */
