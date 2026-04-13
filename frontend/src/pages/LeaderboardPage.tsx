@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchDiningHalls } from "../api";
+import { AvailabilityModal } from "../components/AvailabilityModal/AvailabilityModal";
 import { LeaderboardPodium } from "../components/LeaderboardPodium";
 import { LeaderboardRow } from "../components/LeaderboardRow";
+import { NutritionModal } from "../components/NutritionModal";
 import { useLeaderboardSocket } from "../hooks/useLeaderboardSocket";
 import type {
   DiningHallTab,
@@ -10,7 +12,9 @@ import type {
   ConnectionState,
   GlobalTab,
   DiningHallOption,
+  LeaderboardEntry,
 } from "../types/leaderboard";
+import type { DishInfo } from "../types/meals";
 
 const GLOBAL_TAB: GlobalTab = {
   key: "global",
@@ -41,10 +45,24 @@ function connectionDotClass(state: ConnectionState): string {
   return "bg-red-600 shadow-[0_0_0_1px_rgb(248_113_113_/_0.14),0_0_10px_rgb(248_113_113_/_0.32)]";
 }
 
+function leaderboardEntryToDish(entry: LeaderboardEntry): DishInfo {
+  return {
+    dish_name: entry.name,
+    dining_hall_id: entry.dining_hall_id,
+    dining_hall_name: entry.dining_hall_name,
+    nutrition_info: entry.nutrition_info,
+    elo_rating: entry.elo,
+  };
+}
+
 export function LeaderboardPage() {
   const [tabs, setTabs] = useState<LeaderboardTab[]>([GLOBAL_TAB]);
   const [selectedTabKey, setSelectedTabKey] = useState<string>(GLOBAL_TAB.key);
   const [tabError, setTabError] = useState<string | null>(null);
+  const [nutritionDish, setNutritionDish] = useState<DishInfo | null>(null);
+  const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
+  const [availabilityFoodItem, setAvailabilityFoodItem] = useState<string | null>(null);
+  const [availabilityHallName, setAvailabilityHallName] = useState<string | null>(null);
 
   const selectedTab =
     tabs.find((tab) => tab.key === selectedTabKey) ?? GLOBAL_TAB;
@@ -54,6 +72,16 @@ export function LeaderboardPage() {
   function handleTabSelection(tab: LeaderboardTab) {
     if (tab.key === selectedTabKey) return;
     setSelectedTabKey(tab.key);
+  }
+
+  function handleShowNutrition(entry: LeaderboardEntry) {
+    setNutritionDish(leaderboardEntryToDish(entry));
+  }
+
+  function handleShowAvailability(entry: LeaderboardEntry) {
+    setAvailabilityFoodItem(entry.name);
+    setAvailabilityHallName(entry.dining_hall_name);
+    setIsAvailabilityModalOpen(true);
   }
 
   useEffect(() => {
@@ -163,11 +191,15 @@ export function LeaderboardPage() {
       </div>
 
       <section
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
-        aria-label="Leaderboard table"
-      >
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
+          aria-label="Leaderboard table"
+        >
         {!loading && entries.length > 0 ? (
-          <LeaderboardPodium entries={entries.slice(0, 3)} />
+          <LeaderboardPodium
+            entries={entries.slice(0, 3)}
+            onShowNutrition={handleShowNutrition}
+            onShowAvailability={handleShowAvailability}
+          />
         ) : null}
 
         <div className="grid shrink-0 grid-cols-[2.75rem_minmax(0,1.5fr)_minmax(0,1.1fr)_auto] items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:grid-cols-[3rem_minmax(0,1.5fr)_minmax(0,1.15fr)_auto] sm:gap-4 sm:px-5 sm:py-4 sm:text-sm">
@@ -197,12 +229,21 @@ export function LeaderboardPage() {
                   key={`${entry.dining_hall_id}:${entry.name}`}
                   entry={entry}
                   rank={index + 4}
+                  onShowNutrition={handleShowNutrition}
+                  onShowAvailability={handleShowAvailability}
                 />
               ))}
             </AnimatePresence>
           )}
         </div>
       </section>
+      <NutritionModal dish={nutritionDish} onClose={() => setNutritionDish(null)} />
+      <AvailabilityModal
+        isAvailabilityModalOpen={isAvailabilityModalOpen}
+        setIsAvailabilityModalOpen={setIsAvailabilityModalOpen}
+        foodItem={availabilityFoodItem}
+        hallName={availabilityHallName}
+      />
     </div>
   );
 }

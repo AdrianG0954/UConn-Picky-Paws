@@ -56,6 +56,7 @@ class LeaderboardEntry(BaseModel):
     name: str
     dining_hall_id: UUID
     dining_hall_name: str
+    nutrition_info: dict[str, Any]
     elo: float
 
 async def get_leaderboard_entries(
@@ -83,6 +84,7 @@ async def get_leaderboard_entries(
             name=dish.name,
             dining_hall_id=dish.dining_hall_id,
             dining_hall_name=dining_hall.name,
+            nutrition_info=dish.nutrition_info,
             elo=dish.elo_rating,
         )
         for dish, dining_hall in entries

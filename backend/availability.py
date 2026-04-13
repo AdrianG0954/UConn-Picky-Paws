@@ -27,7 +27,7 @@ class FoodAvailabilityResponse(BaseModel):
 _availability_cache_lock = asyncio.Lock()
 _availability_fetch_sem = asyncio.Semaphore(4)
 _menu_cache: dict[tuple[str, str], Dict] = {}
-_menu_cache_day: Optional[date] = None
+_menu_cache_week_start: Optional[date] = None
 
 
 def _hall_name_from_enum(hall_info: DiningHallEnum) -> str:
@@ -43,19 +43,23 @@ def _normalize_food_name(name: str) -> str:
 
 
 def _get_current_week_dates(today: Optional[date] = None) -> list[date]:
-    current_day = today or date.today()
-    days_since_sunday = (current_day.weekday() + 1) % 7
-    week_start = current_day - timedelta(days=days_since_sunday)
+    week_start = _get_current_week_start(today)
     return [week_start + timedelta(days=offset) for offset in range(7)]
 
 
-def _reset_cache_if_stale() -> None:
-    global _menu_cache_day
+def _get_current_week_start(today: Optional[date] = None) -> date:
+    current_day = today or date.today()
+    days_since_sunday = (current_day.weekday() + 1) % 7
+    return current_day - timedelta(days=days_since_sunday)
 
-    today = date.today()
-    if _menu_cache_day != today:
+
+def _reset_cache_if_stale() -> None:
+    global _menu_cache_week_start
+
+    current_week_start = _get_current_week_start()
+    if _menu_cache_week_start != current_week_start:
         _menu_cache.clear()
-        _menu_cache_day = today
+        _menu_cache_week_start = current_week_start
 
 
 def _get_cached_menu(hall_name: str, dtdate: str) -> Optional[Dict]:
@@ -86,6 +90,13 @@ async def _warm_current_week_menu_cache(
     parse_dishes_service: ParseDishes,
     week_dates: list[date],
 ) -> None:
+    expected_entry_count = len(DiningHallEnum) * len(week_dates)
+
+    _reset_cache_if_stale()
+
+    if len(_menu_cache) == expected_entry_count:
+        return
+
     missing_pairs = [
         (hall_info, _format_menu_date(day))
         for day in week_dates
@@ -97,6 +108,9 @@ async def _warm_current_week_menu_cache(
 
     async with _availability_cache_lock:
         _reset_cache_if_stale()
+        if len(_menu_cache) == expected_entry_count:
+            return
+
         missing_pairs = [
             (hall_info, dtdate)
             for hall_info, dtdate in missing_pairs
