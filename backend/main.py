@@ -263,7 +263,10 @@ async def get_meal_availability(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
-        logger.error(f"Error warming weekly menu cache for {food_item}: {exc}", exc_info=True)
+        logger.error(
+            f"Error fetching weekly availability for {food_item} in {hall_name}: {exc}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching availability",
