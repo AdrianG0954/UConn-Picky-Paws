@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.availability import DishAvailabilityResponse, get_dish_availability
 from backend.calculate_elo import CalculateElo, EloBody, EloUpdateResponse
 from backend.repository.dining_hall_repository import DiningHallSummary, DiningHallRepository
 from backend.helpers import (
@@ -117,11 +118,13 @@ async def update_elo(
             loser_new_elo=loser_new_elo,
         )
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.error(f"Error updating Elo: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to update Elo")
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.error(f"Error updating Elo: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while updating Elo")
 
 
 @app.get("/meals/random", status_code=200)
@@ -151,11 +154,13 @@ async def get_random_meals(
         )
         return response
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Error fetching random meals: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to fetch random meals")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching random meals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while fetching random meals")
 
 
 @app.get("/dining-halls", status_code=200, response_model=list[DiningHallSummary])
@@ -169,12 +174,14 @@ async def dining_halls(
 
         return await DiningHallRepository(db_session).get_dining_halls()
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.error(f"Error fetching dining halls: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to fetch dining halls")
     except HTTPException:
         raise
     except Exception as exc:
         logger.error(f"Error fetching dining halls: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error while fetching menu")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching dining halls")
+
 
 
 @app.websocket("/ws/leaderboard")
@@ -212,27 +219,33 @@ async def websocket_leaderboard(
         return
 
 
-@app.get("/meals/menu/{hall_name}", status_code=200)
-async def get_menu(
-    hall_name: str,
+@app.get("/meals/availability", status_code=200, response_model=DishAvailabilityResponse)
+async def get_meal_availability(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    dtdate: Optional[str] = Query(default=None, description="Optionally fetch a specific date's menu. Format: MM/DD/YYYY"),
-) -> Dict:
+    dish_name: str = Query(description="Dish name"),
+    hall_name: str = Query(description="Dining hall name"),
+) -> DishAvailabilityResponse:
     try:
         hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
-    except KeyError:
-        raise HTTPException(status_code=400, detail=f"Verify hall name {hall_name} is valid")
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dining hall '{hall_name}' not found",
+        ) from exc
 
     try:
-        # verify the user is authenticated (will raise an exception if not)
+        # Verify the user is authenticated 
         AuthService().verify_login_jwt(credentials)
 
-        return await ParseDishes().get_dining_hall_menu(hall_info, dtdate)
-    except HTTPException:
-        raise
+        return await get_dish_availability(dish_name, hall_info)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
-        logger.error(f"Error fetching menu for {hall_name}: {exc}", exc_info=True)
+        logger.error(
+            f"Error fetching weekly availability for {dish_name} in {hall_name}: {exc}",
+            exc_info=True,
+        )
         raise HTTPException(
-            status_code=500, 
-            detail="Internal server error while fetching menu"
+            status_code=500,
+            detail="Internal server error while fetching availability",
         )

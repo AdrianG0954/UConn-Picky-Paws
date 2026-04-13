@@ -14,6 +14,24 @@ export type RandomMealsResponse = {
   meals: DishInfo[];
 };
 
+export type AvailabilityEntry = {
+  meal: string;
+  dining_hall: string;
+};
+
+export type DayAvailability = {
+  date: string;
+  availabilities: AvailabilityEntry[];
+};
+
+/** Matches backend `DishAvailabilityResponse` (GET /meals/availability?dish_name=&hall_name=). */
+export type DishAvailabilityResponse = {
+  dish_name: string;
+  week_start: string;
+  week_end: string;
+  days: DayAvailability[];
+};
+
 /** Shape of GET /dining-halls items; re-exported from `types/leaderboard.ts` for convenience. */
 export type DiningHallOption = {
   id: string;

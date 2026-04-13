@@ -2,8 +2,72 @@ import { motion } from "motion/react";
 import { formatEloForDisplay } from "../utils/eloDisplay";
 import type { LeaderboardEntry } from "../types/leaderboard";
 
+function NutritionInfoIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9.25"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        fill="currentColor"
+        d="M12 10.25a.85.85 0 01.85.85v4.35a.85.85 0 11-1.7 0v-4.35a.85.85 0 01.85-.85z"
+      />
+      <circle cx="12" cy="7.35" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        d="M8 3.75v3.25M16 3.75v3.25"
+      />
+      <rect
+        x="3.75"
+        y="6.25"
+        width="16.5"
+        height="14.5"
+        rx="1.75"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        d="M3.75 11.25h16.5"
+      />
+    </svg>
+  );
+}
+
+const actionClass =
+  "inline-flex items-center justify-center rounded-lg p-1.5 text-uconn-navy hover:bg-uconn-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-uconn-navy focus-visible:ring-offset-2";
+
 type Props = {
   entries: LeaderboardEntry[];
+  onShowNutrition: (entry: LeaderboardEntry) => void;
+  onShowAvailability: (entry: LeaderboardEntry) => void;
 };
 
 const layoutTransition = {
@@ -82,9 +146,13 @@ function slotMeta(rank: Rank): {
 function PodiumSlot({
   rank,
   entry,
+  onShowNutrition,
+  onShowAvailability,
 }: {
   rank: Rank;
   entry: LeaderboardEntry | undefined;
+  onShowNutrition: (entry: LeaderboardEntry) => void;
+  onShowAvailability: (entry: LeaderboardEntry) => void;
 }) {
   const { podiumClass, shellClass } = slotMeta(rank);
   return (
@@ -123,6 +191,30 @@ function PodiumSlot({
               <p className="mt-1 text-[0.65rem] leading-tight text-zinc-600 sm:text-xs">
                 {entry.dining_hall_name}
               </p>
+              <div className="mt-2 flex flex-wrap justify-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onShowNutrition(entry)}
+                  className={actionClass}
+                  aria-label={`Show nutrition info for ${entry.name}`}
+                  title="Nutritional Info"
+                >
+                  <span className="inline-flex size-4 items-center justify-center">
+                    <NutritionInfoIcon className="h-full w-full" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onShowAvailability(entry)}
+                  className={actionClass}
+                  aria-label={`Check availability for ${entry.name}`}
+                  title="Check Availability"
+                >
+                  <span className="inline-flex size-4 items-center justify-center">
+                    <CalendarIcon className="h-full w-full" />
+                  </span>
+                </button>
+              </div>
             </>
           ) : (
             <div className="flex min-h-[4rem] flex-col items-center justify-center gap-1 sm:min-h-[4.5rem]">
@@ -158,7 +250,11 @@ function PodiumSlot({
  * Olympic-style podium: visual order 2nd → 1st → 3rd (tallest center).
  * Pass `entries.slice(0, 3)` from the ordered leaderboard.
  */
-export function LeaderboardPodium({ entries }: Props) {
+export function LeaderboardPodium({
+  entries,
+  onShowNutrition,
+  onShowAvailability,
+}: Props) {
   const first = entries[0];
   const second = entries[1];
   const third = entries[2];
@@ -171,9 +267,27 @@ export function LeaderboardPodium({ entries }: Props) {
       aria-label="Top three"
     >
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-center sm:gap-3 md:max-w-xl md:gap-4">
-        <PodiumSlot key="podium-2" rank={2} entry={second} />
-        <PodiumSlot key="podium-1" rank={1} entry={first} />
-        <PodiumSlot key="podium-3" rank={3} entry={third} />
+        <PodiumSlot
+          key="podium-2"
+          rank={2}
+          entry={second}
+          onShowNutrition={onShowNutrition}
+          onShowAvailability={onShowAvailability}
+        />
+        <PodiumSlot
+          key="podium-1"
+          rank={1}
+          entry={first}
+          onShowNutrition={onShowNutrition}
+          onShowAvailability={onShowAvailability}
+        />
+        <PodiumSlot
+          key="podium-3"
+          rank={3}
+          entry={third}
+          onShowNutrition={onShowNutrition}
+          onShowAvailability={onShowAvailability}
+        />
       </div>
     </div>
   );

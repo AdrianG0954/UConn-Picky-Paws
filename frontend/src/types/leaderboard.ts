@@ -4,6 +4,7 @@ export type LeaderboardEntry = {
   name: string;
   dining_hall_id: string;
   dining_hall_name: string;
+  nutrition_info: Record<string, unknown>;
   elo: number;
 };
 

@@ -1,4 +1,9 @@
-import type { DiningHallOption, DishInfo, RandomMealsResponse } from './types/meals'
+import type {
+  DiningHallOption,
+  DishAvailabilityResponse,
+  DishInfo,
+  RandomMealsResponse,
+} from './types/meals'
 import type { EloPatchBody, EloUpdateResponse } from './types/elo'
 import { getAccessToken } from './auth/session'
 
@@ -30,7 +35,9 @@ export function fetchCasCallback(ticket: string): Promise<CasCallbackResult> {
   if (hit) return hit
 
   const promise = (async (): Promise<CasCallbackResult> => {
-    const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`)
+    const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`, {
+      headers: authHeaders(),
+    })
     if (!res.ok) return { ok: false }
     const body = await res.text()
     if (!body.startsWith('Success:')) return { ok: false }
@@ -119,4 +126,20 @@ export async function patchMealElo(
 
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as EloUpdateResponse
+}
+
+export async function fetchMealAvailability(
+  foodItem: string,
+  hallName: string,
+): Promise<DishAvailabilityResponse> {
+  const params = new URLSearchParams({
+    dish_name: foodItem,
+    hall_name: hallName,
+  })
+  const res = await fetch(`${API_PREFIX}/meals/availability?${params.toString()}`, {
+    headers: authHeaders(),
+  })
+
+  if (!res.ok) throw new Error(await readError(res))
+  return (await res.json()) as DishAvailabilityResponse
 }

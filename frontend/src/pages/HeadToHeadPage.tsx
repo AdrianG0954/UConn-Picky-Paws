@@ -13,6 +13,7 @@ import { useRankDiningHallScope } from "../hooks/useRankDiningHallScope";
 import type { DishInfo } from "../types/meals";
 import { errorMessage } from "../utils/errorMessage";
 import type { EloLockInState } from "../utils/headToHeadElo";
+import { AvailabilityModal } from "../components/AvailabilityModal";
 
 type Pair = [DishInfo, DishInfo];
 
@@ -22,6 +23,15 @@ const ELO_LOCK_IN_HOLD_MS = 1500;
 const ELO_CANT_DECIDE_HOLD_MS = 1500;
 
 export function HeadToHead() {
+  const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] =
+    useState<boolean>(false);
+  const [availabilityFoodItem, setAvailabilityFoodItem] = useState<
+    string | null
+  >(null);
+  const [availabilityHallName, setAvailabilityHallName] = useState<
+    string | null
+  >(null);
+
   const [error, setError] = useState<string | null>(null);
   const clearScopeApplyError = useCallback(() => setError(null), []);
   const scope = useRankDiningHallScope({
@@ -46,6 +56,18 @@ export function HeadToHead() {
   }, [pair]);
   const onShowNutrition1 = useCallback(() => {
     if (pair) setNutritionDish(pair[1]);
+  }, [pair]);
+  const onShowAvailability0 = useCallback(() => {
+    if (!pair) return;
+    setAvailabilityFoodItem(pair[0].dish_name);
+    setAvailabilityHallName(pair[0].dining_hall_name);
+    setIsAvailabilityModalOpen(true);
+  }, [pair]);
+  const onShowAvailability1 = useCallback(() => {
+    if (!pair) return;
+    setAvailabilityFoodItem(pair[1].dish_name);
+    setAvailabilityHallName(pair[1].dining_hall_name);
+    setIsAvailabilityModalOpen(true);
   }, [pair]);
 
   const loadInitialPair = useCallback(async () => {
@@ -230,6 +252,7 @@ export function HeadToHead() {
                         : "loser"
                       : undefined
                   }
+                  onShowAvailability={onShowAvailability0}
                 />
               </div>
               <PairSelectionArrow selectedIndex={selectedIndex} />
@@ -256,6 +279,7 @@ export function HeadToHead() {
                         : "loser"
                       : undefined
                   }
+                  onShowAvailability={onShowAvailability1}
                 />
               </div>
             </div>
@@ -285,6 +309,12 @@ export function HeadToHead() {
       <NutritionModal
         dish={nutritionDish}
         onClose={() => setNutritionDish(null)}
+      />
+      <AvailabilityModal
+        isAvailabilityModalOpen={isAvailabilityModalOpen}
+        setIsAvailabilityModalOpen={setIsAvailabilityModalOpen}
+        foodItem={availabilityFoodItem}
+        hallName={availabilityHallName}
       />
     </div>
   );

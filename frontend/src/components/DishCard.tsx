@@ -80,6 +80,7 @@ type Props = {
   eloFadeIn?: boolean;
   /** Lock-in ELO animation: glow the rating number (green = winner, red = loser). */
   outcomeGlow?: "winner" | "loser";
+  onShowAvailability: () => void;
 };
 
 export const DishCard = memo(function DishCard({
@@ -92,6 +93,7 @@ export const DishCard = memo(function DishCard({
   eloMotion,
   eloFadeIn = false,
   outcomeGlow,
+  onShowAvailability,
 }: Props) {
   const [displayElo, setDisplayElo] = useState(dish.elo_rating);
   const [fadeEntered, setFadeEntered] = useState(false);
@@ -207,6 +209,7 @@ export const DishCard = memo(function DishCard({
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
+            onShowAvailability();
           }}
           className={`${cardTextActionClass} self-end sm:self-auto`}
         >

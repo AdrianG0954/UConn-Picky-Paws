@@ -1,0 +1,219 @@
+import type { EventInput } from "@fullcalendar/core";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import FullCalendar from "@fullcalendar/react";
+import { useCallback, useEffect, useState } from "react";
+
+import { fetchMealAvailability } from "../api";
+import type { DishAvailabilityResponse } from "../types/meals";
+import { errorMessage } from "../utils/errorMessage";
+
+function titleCaseLabel(value: string): string {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function mealTone(meal: string): string {
+  if (meal === "breakfast") return "availability-event-breakfast";
+  if (meal === "lunch") return "availability-event-lunch";
+  return "availability-event-dinner";
+}
+
+type Props = {
+  isAvailabilityModalOpen: boolean;
+  setIsAvailabilityModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  foodItem: string | null;
+  hallName: string | null;
+};
+
+export function AvailabilityModal({
+  isAvailabilityModalOpen,
+  setIsAvailabilityModalOpen,
+  foodItem,
+  hallName,
+}: Props) {
+  const [availability, setAvailability] =
+    useState<DishAvailabilityResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const onClose = useCallback(() => {
+    setIsAvailabilityModalOpen(false);
+  }, [setIsAvailabilityModalOpen]);
+
+  useEffect(() => {
+    if (!isAvailabilityModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isAvailabilityModalOpen, onClose]);
+
+  useEffect(() => {
+    if (!isAvailabilityModalOpen || !foodItem || !hallName) {
+      return;
+    }
+
+    let cancelled = false;
+
+    // Drop previous dish immediately so the calendar does not show stale events
+    // while the new request is in flight.
+    setAvailability(null);
+    setRequestError(null);
+    setLoading(true);
+
+    void (async () => {
+      try {
+        const response = await fetchMealAvailability(foodItem, hallName);
+        if (!cancelled) {
+          setAvailability(response);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setAvailability(null);
+          setRequestError(errorMessage(e, "Failed to load availability."));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [foodItem, hallName, isAvailabilityModalOpen]);
+
+  if (!isAvailabilityModalOpen) {
+    return null;
+  }
+
+  const events: EventInput[] = availability
+    ? availability.days.flatMap((day) =>
+        day.availabilities.map((entry) => ({
+          title: `${titleCaseLabel(entry.meal)} at ${titleCaseLabel(entry.dining_hall)}`,
+          date: day.date,
+          classNames: [mealTone(entry.meal)],
+          extendedProps: {
+            meal: titleCaseLabel(entry.meal),
+            diningHall: titleCaseLabel(entry.dining_hall),
+          },
+        })),
+      )
+    : [];
+
+  const hasResults = events.length > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-[1.75rem] border border-zinc-200/80 bg-white p-5 shadow-2xl shadow-zinc-900/10 md:p-7"
+        role="dialog"
+        aria-labelledby="availability-modal-title"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2
+              id="availability-modal-title"
+              className="text-2xl font-semibold tracking-tight text-uconn-navy md:text-3xl"
+            >
+              {foodItem ? `${foodItem} availability` : "Availability"}
+            </h2>
+            <p className="mt-2 text-sm text-zinc-600 md:text-base">
+              {hallName
+                ? `Current week for ${titleCaseLabel(hallName)} dining hall.`
+                : "Current week for this dining hall."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-3 py-2 text-sm font-medium text-uconn-navy hover:bg-uconn-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-uconn-navy focus-visible:ring-offset-2"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mb-5 flex flex-wrap gap-2 text-sm text-zinc-700">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium">
+            <span className="size-2.5 rounded-full bg-amber-500" />
+            Breakfast
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-medium">
+            <span className="size-2.5 rounded-full bg-sky-500" />
+            Lunch
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 font-medium">
+            <span className="size-2.5 rounded-full bg-violet-500" />
+            Dinner
+          </span>
+        </div>
+
+        {loading ? (
+          <p className="mb-4 text-sm text-zinc-600">Loading availability...</p>
+        ) : null}
+
+        {requestError ? (
+          <div
+            className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+            role="alert"
+          >
+            {requestError}
+          </div>
+        ) : null}
+
+        {!loading && !requestError && availability && !hasResults ? (
+          <p className="mb-4 text-sm text-zinc-600">
+            This item is not available this week.
+          </p>
+        ) : null}
+
+        {availability ? (
+          <div className="availability-calendar rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3 md:p-4">
+            <FullCalendar
+              key={`${foodItem}:${hallName}`}
+              plugins={[dayGridPlugin]}
+              initialView="dayGridWeek"
+              initialDate={availability.week_start}
+              height="auto"
+              events={events}
+              fixedWeekCount={false}
+              firstDay={0}
+              dayMaxEventRows={false}
+              expandRows
+              eventContent={(eventInfo) => {
+                const meal = String(eventInfo.event.extendedProps.meal ?? "");
+                const diningHall = String(
+                  eventInfo.event.extendedProps.diningHall ?? "",
+                );
+
+                return (
+                  <div className="availability-event-inner">
+                    <span className="availability-event-meal">{meal}</span>
+                    <span className="availability-event-hall">
+                      {diningHall}
+                    </span>
+                  </div>
+                );
+              }}
+              headerToolbar={{
+                left: "title",
+                right: "",
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
