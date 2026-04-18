@@ -30,7 +30,8 @@ npm run supabase:push
 
 # Serverless functions workflow
 
-- Ensure you're changing your supabase url based on if you want to hit the local or deployed functions
+- CAS auth functions require local function secrets. Rename `supabase/functions/.env.example` to `supabase/functions/.env` and populate values with your key using `npx supabase gen signing-key --algorithm ES256`. Wrap it in a string on one line.
+- Populate `supabase/signing_keys.json` with the output and wrap in an array.
 
 ```
 # After testing changes locally, deploy
@@ -49,3 +50,7 @@ npm run supabase:reset
 # Stop supabase stack
 npm run supabase:stop
 ```
+
+# Debugging
+
+- Try resetting your instance if migrations aren't applied

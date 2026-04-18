@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# signing keys
+signing_keys.json

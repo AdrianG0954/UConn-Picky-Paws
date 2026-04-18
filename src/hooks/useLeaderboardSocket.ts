@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { refetchTopDishes } from "../api";
-import { supabase } from "../utils/supabase";
+import { supabase, syncRealtimeAuth } from "../utils/supabase";
 import type {
   ConnectionState,
   LeaderboardEntry,
@@ -31,6 +31,8 @@ export function useLeaderboardSocket(
   const [socketError, setSocketError] = useState<string | null>(null);
 
   useEffect(() => {
+    void syncRealtimeAuth();
+
     async function runRefetch() {
       try {
         const nextEntries = await refetchTopDishes(selectedTab);

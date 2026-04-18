@@ -140,9 +140,9 @@ export function HeadToHead() {
     scope.hallsStatus === "ready" && scope.hallOptions.length > 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-10 xl:max-w-[78rem]">
-        <header className="mb-4 text-center md:mb-8">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col px-4 py-4 md:px-6 md:py-5 xl:max-w-[78rem]">
+        <header className="mb-3 text-center md:mb-4">
           <h1 className="text-4xl font-semibold tracking-tight text-uconn-navy sm:text-5xl md:text-6xl">
             Picky Paws
           </h1>
@@ -206,7 +206,7 @@ export function HeadToHead() {
 
         {pair ? (
           <>
-            <div className="mb-6 grid grid-cols-1 items-stretch gap-y-4 md:mb-10 md:grid-cols-[1fr_auto_1fr] md:gap-x-8 md:gap-y-6 lg:gap-x-12 lg:gap-y-6">
+            <div className="mb-4 grid flex-1 grid-cols-1 items-stretch gap-y-4 md:mb-6 md:grid-cols-[1fr_auto_1fr] md:gap-x-8 md:gap-y-4 lg:gap-x-10">
               <div className="min-w-0">
                 <DishCard
                   dish={pair[0]}
@@ -260,7 +260,7 @@ export function HeadToHead() {
               </div>
             </div>
 
-            <div className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-4 md:gap-6">
+            <div className="mx-auto mt-auto grid w-full max-w-2xl grid-cols-2 gap-4 md:gap-5">
               <button
                 type="button"
                 disabled={busy || selectedIndex === null}

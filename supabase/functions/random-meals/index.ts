@@ -8,6 +8,7 @@ import {
   readJson,
   toHttpError,
 } from "../_shared/http.ts";
+import { requireAuthenticatedRequest } from "../_shared/auth.ts";
 import { getServiceRoleClient } from "../_shared/supabase.ts";
 
 type RandomMealsRequest = {
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    await requireAuthenticatedRequest(req);
     const body = await readJson<RandomMealsRequest>(req);
     const count = body.count;
     const filterDiningHalls = Array.from(

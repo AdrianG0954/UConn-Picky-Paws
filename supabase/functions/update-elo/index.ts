@@ -8,6 +8,7 @@ import {
   readJson,
   toHttpError,
 } from "../_shared/http.ts";
+import { requireAuthenticatedRequest } from "../_shared/auth.ts";
 import { getServiceRoleClient } from "../_shared/supabase.ts";
 
 type DishBody = {
@@ -98,6 +99,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    await requireAuthenticatedRequest(req);
     const body = await readJson<EloBody>(req);
     const winner = getDishIdentity(body.winner, "winner");
     const loser = getDishIdentity(body.loser, "loser");

@@ -166,7 +166,7 @@ export const DishCard = memo(function DishCard({
   return (
     <article
       className={[
-        "flex min-h-0 w-full flex-col rounded-3xl border border-zinc-200 bg-white p-5 text-left shadow-md transition-shadow sm:min-h-[17rem] sm:p-6 md:min-h-[20rem] md:p-8 lg:min-h-[22rem] lg:p-10",
+        "flex min-h-0 w-full flex-col rounded-3xl border border-zinc-200 bg-white p-4 text-left shadow-md transition-shadow sm:min-h-[15rem] sm:p-5 md:min-h-[17rem] md:p-6 lg:min-h-[18.5rem] lg:p-7",
         selected ? "border-uconn-navy ring-4 ring-uconn-navy/25" : "",
         disabled
           ? "cursor-not-allowed opacity-60"

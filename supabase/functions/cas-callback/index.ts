@@ -1,13 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import {
+  createAccessToken,
+  validateCasTicket,
+} from "../_shared/auth.ts";
+import {
   errorResponse,
   handleOptions,
   jsonResponse,
   toHttpError,
 } from "../_shared/http.ts";
-import { requireAuthenticatedRequest } from "../_shared/auth.ts";
-import { getServiceRoleClient } from "../_shared/supabase.ts";
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);
@@ -15,23 +17,19 @@ Deno.serve(async (req) => {
     return preflight;
   }
 
-  if (req.method !== "GET" && req.method !== "POST") {
+  if (req.method !== "GET") {
     return errorResponse(405, "Method not allowed.");
   }
 
   try {
-    await requireAuthenticatedRequest(req);
-    const supabase = getServiceRoleClient();
-    const { data, error } = await supabase
-      .from("dining_halls")
-      .select("id, name")
-      .order("name", { ascending: true });
-
-    if (error) {
-      throw error;
+    const url = new URL(req.url);
+    const ticket = url.searchParams.get("ticket")?.trim();
+    if (!ticket) {
+      return errorResponse(400, "Missing sign-in ticket.");
     }
 
-    return jsonResponse(data ?? []);
+    const identity = await validateCasTicket(ticket);
+    return jsonResponse(await createAccessToken(identity));
   } catch (error) {
     const httpError = toHttpError(error);
     return errorResponse(httpError.status, httpError.message, httpError.detail);

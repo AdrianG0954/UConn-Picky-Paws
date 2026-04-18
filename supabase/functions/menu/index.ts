@@ -8,6 +8,7 @@ import {
   readJson,
   toHttpError,
 } from "../_shared/http.ts";
+import { requireAuthenticatedRequest } from "../_shared/auth.ts";
 import { getDiningHallInfo, parseFoodItems } from "../_shared/dining-halls.ts";
 
 type MenuRequest = {
@@ -27,6 +28,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    await requireAuthenticatedRequest(req);
     const body = await readJson<MenuRequest>(req);
     if (!body.hallName) {
       throw new HttpError(400, "hallName is required.");
