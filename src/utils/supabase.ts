@@ -18,7 +18,6 @@ async function supabaseFetch(
 ): Promise<Response> {
   const headers = new Headers(init?.headers);
   const accessToken = getAccessToken();
-  console.log(accessToken)
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }

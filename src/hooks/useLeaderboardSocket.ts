@@ -88,7 +88,6 @@ export function useLeaderboardSocket(
     );
 
     channel = channel.subscribe((status, err) => {
-      console.log(status, err)
       if (status === "SUBSCRIBED") {
         setConnectionState("connected");
         runRefetch();
