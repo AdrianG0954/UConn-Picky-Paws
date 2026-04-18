@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAccessToken } from "../auth/session";
 
+// Change if want to test with prod functions
 const supabaseUrl = import.meta.env.DEV
   ? "http://127.0.0.1:54321"
   : import.meta.env.VITE_SUPABASE_URL;
