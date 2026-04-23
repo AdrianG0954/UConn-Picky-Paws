@@ -9,6 +9,9 @@ import { getAccessToken } from "./auth/session";
 
 export const API_PREFIX = "/api"; 
 
+// Nginx Url
+export const BASE_URL = ""; 
+
 /** Headers for routes that require `Authorization: Bearer` (same JWT as after CAS callback). */
 export function authHeaders(json = false): Record<string, string> {
   const h: Record<string, string> = {};
@@ -35,7 +38,7 @@ export function fetchCasCallback(ticket: string): Promise<CasCallbackResult> {
 
   const promise = (async (): Promise<CasCallbackResult> => {
     const res = await fetch(
-      `${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`,
+      `${BASE_URL}${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`,
       {
         headers: authHeaders(),
       },
@@ -76,7 +79,7 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
-  const res = await fetch(`${API_PREFIX}/dining-halls`, {
+  const res = await fetch(`${BASE_URL}${API_PREFIX}/dining-halls`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -103,7 +106,7 @@ export async function fetchRandomMeals(
     }
   }
 
-  const res = await fetch(`${API_PREFIX}/meals/random?${params.toString()}`, {
+  const res = await fetch(`${BASE_URL}${API_PREFIX}/meals/random?${params.toString()}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -123,7 +126,7 @@ export async function patchMealElo(
     draw,
   };
 
-  const res = await fetch(`${API_PREFIX}/meals/elo`, {
+  const res = await fetch(`${BASE_URL}${API_PREFIX}/meals/elo`, {
     method: "PATCH",
     headers: authHeaders(true),
     body: JSON.stringify(body),
@@ -142,7 +145,7 @@ export async function fetchMealAvailability(
     hall_name: hallName,
   });
   const res = await fetch(
-    `${API_PREFIX}/meals/availability?${params.toString()}`,
+    `${BASE_URL}${API_PREFIX}/meals/availability?${params.toString()}`,
     {
       headers: authHeaders(),
     },

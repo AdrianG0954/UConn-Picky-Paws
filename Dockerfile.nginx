@@ -1,0 +1,10 @@
+FROM nginx:alpine
+
+COPY ./nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Exposes port 443
+EXPOSE 443
+
+# Starts Nginx with default conf and keeps it running
+ENTRYPOINT [ "nginx", "-c", "/etc/nginx/conf.d/default.conf" ]
+CMD ["-g", "daemon off;"]
