@@ -7,7 +7,7 @@ import type {
 import type { EloPatchBody, EloUpdateResponse } from "./types/elo";
 import { getAccessToken } from "./auth/session";
 
-export const API_PREFIX = import.meta.env.PROXY_TARGET || "https://dininghallfoodranker-production.up.railway.app";
+export const API_PREFIX = "/api"; 
 
 /** Headers for routes that require `Authorization: Bearer` (same JWT as after CAS callback). */
 export function authHeaders(json = false): Record<string, string> {
