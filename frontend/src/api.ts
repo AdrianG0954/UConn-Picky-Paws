@@ -10,7 +10,7 @@ import { getAccessToken } from "./auth/session";
 export const API_PREFIX = "/api"; 
 
 // Nginx Url
-export const BASE_URL = ""; 
+export const BASE_URL = "https://reverseproxy-production-468a.up.railway.app"; 
 
 /** Headers for routes that require `Authorization: Bearer` (same JWT as after CAS callback). */
 export function authHeaders(json = false): Record<string, string> {
