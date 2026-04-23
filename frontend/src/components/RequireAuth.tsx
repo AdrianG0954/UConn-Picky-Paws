@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-import { API_PREFIX } from '../api'
+// import { API_PREFIX } from '../api'
 import { isSessionAuthenticated } from '../auth/session'
 
 /**
@@ -12,7 +12,8 @@ export function RequireAuth() {
 
   useLayoutEffect(() => {
     // redirect to login page if not authenticated
-    if (!authed) window.location.replace(`${API_PREFIX}/login`)
+    // if (!authed) window.location.replace(`${API_PREFIX}/login`)
+    if (!authed) window.location.replace(`/login`)
   }, [authed])
 
   if (!authed) {
