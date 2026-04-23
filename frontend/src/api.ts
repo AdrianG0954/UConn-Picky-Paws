@@ -6,9 +6,12 @@ import type {
 } from './types/meals'
 import type { EloPatchBody, EloUpdateResponse } from './types/elo'
 import { getAccessToken } from './auth/session'
+import dotenv from 'dotenv'
 
-/** Base path for FastAPI (Vite dev proxy strips `/api` and forwards to the server). */
-// export const API_PREFIX = '/api'
+// loads .env file
+dotenv.config()
+
+export const API_PREFIX = process.env.API_PREFIX
 
 /** Headers for routes that require `Authorization: Bearer` (same JWT as after CAS callback). */
 export function authHeaders(json = false): Record<string, string> {
@@ -35,8 +38,7 @@ export function fetchCasCallback(ticket: string): Promise<CasCallbackResult> {
   if (hit) return hit
 
   const promise = (async (): Promise<CasCallbackResult> => {
-    // const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`, {
-    const res = await fetch(`/callback?${new URLSearchParams({ ticket })}`, {
+    const res = await fetch(`${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`, {
       headers: authHeaders(),
     })
     if (!res.ok) return { ok: false }
@@ -74,8 +76,7 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
-  // const res = await fetch(`${API_PREFIX}/dining-halls`, { headers: authHeaders() })
-  const res = await fetch(`/dining-halls`, { headers: authHeaders() })
+  const res = await fetch(`${API_PREFIX}/dining-halls`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as DiningHallOption[]
 }
@@ -100,8 +101,7 @@ export async function fetchRandomMeals(
     }
   }
 
-  // const res = await fetch(`${API_PREFIX}/meals/random?${params.toString()}`, {
-  const res = await fetch(`/meals/random?${params.toString()}`, {
+  const res = await fetch(`${API_PREFIX}/meals/random?${params.toString()}`, {
     headers: authHeaders(),
   })
   if (!res.ok) throw new Error(await readError(res))
@@ -121,8 +121,7 @@ export async function patchMealElo(
     draw,
   }
 
-  // const res = await fetch(`${API_PREFIX}/meals/elo`, {
-  const res = await fetch(`/meals/elo`, {
+  const res = await fetch(`${API_PREFIX}/meals/elo`, {
     method: 'PATCH',
     headers: authHeaders(true),
     body: JSON.stringify(body),
@@ -140,8 +139,7 @@ export async function fetchMealAvailability(
     dish_name: foodItem,
     hall_name: hallName,
   })
-  // const res = await fetch(`${API_PREFIX}/meals/availability?${params.toString()}`, {
-  const res = await fetch(`/meals/availability?${params.toString()}`, {
+  const res = await fetch(`${API_PREFIX}/meals/availability?${params.toString()}`, {
     headers: authHeaders(),
   })
 

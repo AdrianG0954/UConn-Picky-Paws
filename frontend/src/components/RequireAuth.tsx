@@ -1,7 +1,9 @@
 import { useLayoutEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-// import { API_PREFIX } from '../api'
 import { isSessionAuthenticated } from '../auth/session'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 /**
  * Full-page redirect to `/api/login` → backend → UConn CAS.
@@ -12,8 +14,7 @@ export function RequireAuth() {
 
   useLayoutEffect(() => {
     // redirect to login page if not authenticated
-    // if (!authed) window.location.replace(`${API_PREFIX}/login`)
-    if (!authed) window.location.replace(`/login`)
+    if (!authed) window.location.replace(`${process.env.API_PREFIX}/login`)
   }, [authed])
 
   if (!authed) {
