@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../auth/session";
+import { buildApiWebSocketUrl } from "../api";
 import type {
   ConnectionState,
   LeaderboardTab,
@@ -8,11 +9,10 @@ import type {
   LeaderboardSnapshotMessage,
 } from "../types/leaderboard";
 
-function buildWebSocketUrl(path: string): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+function leaderboardWebSocketUrl(): string {
   const token = getAccessToken();
   const qs = token ? `?token=${encodeURIComponent(token)}` : "";
-  return `${protocol}//${window.location.host}${path}${qs}`;
+  return buildApiWebSocketUrl("/ws/leaderboard", qs);
 }
 
 /* Validators for incoming ws message (snapshot of leaderboard) */
@@ -128,7 +128,7 @@ export function useLeaderboardSocket(
       setConnectionState((current) =>
         current === "reconnecting" ? "reconnecting" : "connecting",
       );
-      const socket = new WebSocket(buildWebSocketUrl("/ws/leaderboard"));
+      const socket = new WebSocket(leaderboardWebSocketUrl());
       socketRef.current = socket;
 
       // These callbacks are exposed by the WebSocket object and are fired by the browser

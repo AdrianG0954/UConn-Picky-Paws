@@ -7,10 +7,18 @@ import type {
 import type { EloPatchBody, EloUpdateResponse } from "./types/elo";
 import { getAccessToken } from "./auth/session";
 
-export const API_PREFIX = "/api"; 
+/** FastAPI backend (no `/api` prefix). Override with `VITE_API_BASE_URL` for local dev. */
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ?? "https://dininghallfoodranker-production.up.railway.app"
+).replace(/\/$/, "");
 
-// Nginx Url
-export const BASE_URL = "https://reverseproxy-production-468a.up.railway.app"; 
+/** WebSocket URL for a path on the same host as `API_BASE_URL` (e.g. `/ws/leaderboard`). */
+export function buildApiWebSocketUrl(path: string, search = ""): string {
+  const base = new URL(API_BASE_URL);
+  const wsProto = base.protocol === "https:" ? "wss:" : "ws:";
+  const q = search && !search.startsWith("?") ? `?${search}` : search;
+  return `${wsProto}//${base.host}${path}${q}`;
+}
 
 /** Headers for routes that require `Authorization: Bearer` (same JWT as after CAS callback). */
 export function authHeaders(json = false): Record<string, string> {
@@ -38,7 +46,7 @@ export function fetchCasCallback(ticket: string): Promise<CasCallbackResult> {
 
   const promise = (async (): Promise<CasCallbackResult> => {
     const res = await fetch(
-      `${BASE_URL}${API_PREFIX}/callback?${new URLSearchParams({ ticket })}`,
+      `${API_BASE_URL}/callback?${new URLSearchParams({ ticket })}`,
       {
         headers: authHeaders(),
       },
@@ -79,7 +87,7 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
-  const res = await fetch(`${BASE_URL}${API_PREFIX}/dining-halls`, {
+  const res = await fetch(`${API_BASE_URL}/dining-halls`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -106,7 +114,7 @@ export async function fetchRandomMeals(
     }
   }
 
-  const res = await fetch(`${BASE_URL}${API_PREFIX}/meals/random?${params.toString()}`, {
+  const res = await fetch(`${API_BASE_URL}/meals/random?${params.toString()}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -126,7 +134,7 @@ export async function patchMealElo(
     draw,
   };
 
-  const res = await fetch(`${BASE_URL}${API_PREFIX}/meals/elo`, {
+  const res = await fetch(`${API_BASE_URL}/meals/elo`, {
     method: "PATCH",
     headers: authHeaders(true),
     body: JSON.stringify(body),
@@ -145,7 +153,7 @@ export async function fetchMealAvailability(
     hall_name: hallName,
   });
   const res = await fetch(
-    `${BASE_URL}${API_PREFIX}/meals/availability?${params.toString()}`,
+    `${API_BASE_URL}/meals/availability?${params.toString()}`,
     {
       headers: authHeaders(),
     },

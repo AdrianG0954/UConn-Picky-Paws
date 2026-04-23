@@ -1,10 +1,10 @@
 import { useLayoutEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { isSessionAuthenticated } from "../auth/session";
-import { API_PREFIX, BASE_URL } from "../api";
+import { API_BASE_URL } from "../api";
 
 /*
- * Full-page redirect to `/api/login` → backend → UConn CAS.
+ * Full-page redirect to backend `GET /login` → UConn CAS.
  * (Client-side routing alone cannot start the CAS handshake.)
  */
 export function RequireAuth() {
@@ -12,7 +12,7 @@ export function RequireAuth() {
 
   useLayoutEffect(() => {
     // redirect to login page if not authenticated
-    if (!authed) window.location.replace(`${BASE_URL}${API_PREFIX}/login`);
+    if (!authed) window.location.replace(`${API_BASE_URL}/login`);
   }, [authed]);
 
   if (!authed) {

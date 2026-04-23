@@ -2,6 +2,7 @@ import os
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from fastapi.security import HTTPBearer
@@ -24,6 +25,20 @@ logging.basicConfig(
 
 app = FastAPI()
 app.state.connection_manager = ConnectionManager()
+
+_cors_raw = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,"
+    "https://frontend-production-f566.up.railway.app",
+)
+_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # creates a pool of 15 connections + 15 overflow connections = 30 connections MAX
 _engine = create_async_engine(
