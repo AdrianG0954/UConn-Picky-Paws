@@ -153,9 +153,6 @@ async def get_random_meals(
             exclude_dining_hall_ids=exclude_dining_hall_ids,
         )
         return response
-    except ValueError as ve:
-        logger.warning(f"Error fetching random meals: {ve}", exc_info=True)
-        raise HTTPException(status_code=400, detail="Failed to fetch random meals")
     except HTTPException:
         raise
     except Exception as e:
