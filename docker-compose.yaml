@@ -33,7 +33,7 @@ services:
           "-c",
           "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health')",
         ]
-      interval: 1m
+      interval: 1m30s
       timeout: 5s
       retries: 5
       start_period: 25s
@@ -42,19 +42,6 @@ services:
         condition: service_healthy
     volumes:
       - .:/app # Mount the current directory to /app in the container
-
-  populate_db:
-    restart: "no"
-    build:
-      context: .
-      dockerfile: Dockerfile.populate
-    env_file:
-      - .env
-    depends_on:
-      database:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
 
   frontend:
     restart: unless-stopped
