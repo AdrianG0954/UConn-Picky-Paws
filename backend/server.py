@@ -33,10 +33,11 @@ allowed_origins = [
     "http://127.0.0.1:5173",
     "https://frontend-production-f566.up.railway.app",
     "https://dininghallfoodranker-production.up.railway.app",
+    "https://dininghallfoodranker-production.up.railway.app/callback"
 ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
