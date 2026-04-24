@@ -22,7 +22,7 @@ from backend.ws import (
     handle_leaderboard_websocket,
     publish_leaderboard_snapshots,
 )
-from backend.parse_dishes import ParseDishes, DiningHallEnum
+from backend.parse_dishes import DiningHallEnum
 from backend.auth_service import AuthService
 from backend.server import (
     logger, app, request_db_session, _db_session_maker, 
