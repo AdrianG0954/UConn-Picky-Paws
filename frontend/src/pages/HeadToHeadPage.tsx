@@ -18,9 +18,9 @@ import { AvailabilityModal } from "../components/AvailabilityModal";
 type Pair = [DishInfo, DishInfo];
 
 /** Pause after vote so Elo animation finishes before fetching the replacement dish. */
-const ELO_LOCK_IN_HOLD_MS = 500;
+const ELO_LOCK_IN_HOLD_MS = 1000;
 /** Pause before loading a new pair so both Elos flash briefly. */
-const ELO_CANT_DECIDE_HOLD_MS = 500;
+const ELO_CANT_DECIDE_HOLD_MS = 1000;
 
 export function HeadToHead() {
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] =
