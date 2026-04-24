@@ -213,7 +213,7 @@ export function LeaderboardPage() {
           <span className="text-right">Elo</span>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-auto">
           {loading ? (
             <p className="px-5 py-6 text-sm text-zinc-500 md:py-8">
               Loading leaderboard...
