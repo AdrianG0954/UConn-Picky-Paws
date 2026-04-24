@@ -55,20 +55,12 @@ async def callback(
         return Response(content="Failed: Missing ticket", status_code=400)
     
     netid = await validate_cas_ticket(ticket)
-    if not netid:
-        return Response(content="Failed", status_code=401)
+    if netid:
+        auth_service = AuthService()
+        jwt_token = auth_service.create_login_jwt(netid)
+        return Response(content=f"Success: {jwt_token}", status_code=200)
 
-    auth_service = AuthService()
-    jwt_token = auth_service.create_login_jwt(netid)
-
-    # IMPORTANT:
-    # This endpoint is typically hit via browser navigation from CAS, not an XHR/fetch.
-    # Returning a redirect avoids CORS issues and lets the frontend read the token client-side.
-    # Use URL fragment (#) so the token isn't sent to the frontend server in request logs.
-    return RedirectResponse(
-        url=f"{SERVICE_URL}#token={urllib.parse.quote(jwt_token, safe='')}",
-        status_code=302,
-    )
+    return Response(content="Failed", status_code=401)
 
 
 async def validate_cas_ticket(ticket):
