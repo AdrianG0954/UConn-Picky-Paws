@@ -3,8 +3,9 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# Install deps (use lockfile for reproducible builds)
-COPY package.json package-lock.json ./
+# for local dev 
+# COPY package.json package-lock.json ./
+COPY ./frontend/package.json ./frontend/package-lock.json ./
 RUN npm ci
 
 # Build static assets

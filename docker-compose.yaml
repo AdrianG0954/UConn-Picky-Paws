@@ -53,6 +53,7 @@ services:
     ports:
       - "5173:5173"
     environment:
+      NODE_ENV: development
       PROXY_TARGET: http://backend:8000
       DOCKER_DEV: "1"
     depends_on:
