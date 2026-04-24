@@ -8,8 +8,9 @@ WORKDIR /app
 COPY ./frontend/package.json ./frontend/package-lock.json ./
 RUN npm ci
 
-# Build static assets
-COPY . .
+# for local dev
+# COPY . .
+COPY ./frontend ./
 RUN npm run build
 
 ### Runtime stage
