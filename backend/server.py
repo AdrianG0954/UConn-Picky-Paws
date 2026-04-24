@@ -34,10 +34,9 @@ allowed_origins = [
     "https://frontend-production-f566.up.railway.app",
     "https://dininghallfoodranker-production.up.railway.app",
 ]
-_cors_origins = [o.strip() for o in allowed_origins if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
