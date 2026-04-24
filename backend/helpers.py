@@ -127,9 +127,6 @@ async def get_random_meals_from_db(
     res = await db_session.execute(stmt)
     entries = res.all()
 
-    if len(entries) != count:
-        raise ValueError(f"Failed to get {count} random meals.")
-
     return RandomMealsResponse(
         meals=[
             DishInfo(
