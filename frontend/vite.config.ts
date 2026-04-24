@@ -10,6 +10,7 @@ export default defineConfig({
     port: 3000,
   },
   preview: {
+    allowedHosts: ["frontend-production-d580.up.railway.app"],
     host: true,
     port: Number.parseInt(process.env.PORT ?? "3000", 10),
     strictPort: true,
