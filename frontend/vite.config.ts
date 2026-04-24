@@ -9,4 +9,9 @@ export default defineConfig({
     host: true,
     port: 3000,
   },
+  preview: {
+    host: true,
+    port: Number.parseInt(process.env.PORT ?? "3000", 10),
+    strictPort: true,
+  },
 });
