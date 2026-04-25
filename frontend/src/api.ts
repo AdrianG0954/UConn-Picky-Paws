@@ -13,7 +13,7 @@ export const API_BASE_URL = (
   "https://dininghallfoodranker-production.up.railway.app"
 ).replace(/\/$/, "");
 
-// If we have a authentication error, we should redirect to the login page
+// If we have an authentication error, we should redirect to the login page
 function checkAuthError(res: Response): void {
   if (res.status === 401 || res.status === 403) {
     window.location.replace(`${API_BASE_URL}/login`);

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../auth/session";
-import { buildApiWebSocketUrl } from "../api";
-import { API_BASE_URL } from "../api";
+import { buildApiWebSocketUrl, API_BASE_URL } from "../api";
 import type {
   ConnectionState,
   LeaderboardTab,

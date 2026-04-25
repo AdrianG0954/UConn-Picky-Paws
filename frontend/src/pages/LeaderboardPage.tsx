@@ -34,6 +34,7 @@ function tabFromDiningHall(option: DiningHallOption): DiningHallTab {
 function connectionLabel(state: ConnectionState): string {
   if (state === "connected") return "Live";
   if (state === "reconnecting") return "Reconnecting...";
+  if (state === "disconnected") return "Live updates off";
   return "Connecting...";
 }
 
