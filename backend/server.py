@@ -23,6 +23,27 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+
+class _SuppressLeaderboardHealthChecks(logging.Filter):
+    """
+    Suppress Uvicorn access log entries for WebSocket connections to
+    /ws/leaderboard that originate from Railway's internal load balancer
+    IP range (100.64.0.x).  Every other request is logged normally.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        # Uvicorn access log lines look like:
+        #   100.64.0.3:54321 - "WebSocket /ws/leaderboard" [...]
+        if "/ws/leaderboard" in msg and "100.64." in msg:
+            return False
+        return True
+
+
+# Attach the filter to Uvicorn's access logger so it takes effect whether
+# the server is started via CLI or programmatically.
+logging.getLogger("uvicorn.access").addFilter(_SuppressLeaderboardHealthChecks())
+
 app = FastAPI()
 app.state.connection_manager = ConnectionManager()
 
