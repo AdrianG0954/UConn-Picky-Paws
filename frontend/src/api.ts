@@ -10,7 +10,7 @@ import { getAccessToken } from "./auth/session";
 /** FastAPI backend (no `/api` prefix). Override with `VITE_API_BASE_URL` for local dev. */
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ??
-  "https://dininghallfoodranker-production.up.railway.app"
+  "https://pickypaws-backend-api.win"
 ).replace(/\/$/, "");
 
 // If we have an authentication error, we should redirect to the login page
