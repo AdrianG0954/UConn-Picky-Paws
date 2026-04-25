@@ -10,7 +10,7 @@ export default defineConfig({
     port: 3000,
   },
   preview: {
-    allowedHosts: ["frontend-production-d580.up.railway.app", "pickypaws.app"],
+    allowedHosts: ["picky-paws.com"],
     host: true,
     port: Number.parseInt(process.env.PORT ?? "3000", 10),
     strictPort: true,

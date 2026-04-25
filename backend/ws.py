@@ -4,6 +4,7 @@ from typing import Literal, TypeAlias, Optional, Tuple
 from uuid import UUID
 
 from fastapi import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from backend.helpers import LeaderboardEntry, get_leaderboard_entries
@@ -26,7 +27,9 @@ class ConnectionManager:
         self.websocket_scopes: dict[WebSocket, LeaderboardScope] = {}
 
     async def connect(self, websocket: WebSocket):
-        await websocket.accept()
+        # Safe to call even if the route already accepted.
+        if websocket.application_state != WebSocketState.CONNECTED:
+            await websocket.accept()
 
     def disconnect(self, websocket: WebSocket):
         """

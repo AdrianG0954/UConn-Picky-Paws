@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clearAccessToken, getAccessToken } from "../auth/session";
+import { getAccessToken } from "../auth/session";
 import { buildApiWebSocketUrl, API_BASE_URL } from "../api";
 import type {
   ConnectionState,
@@ -187,8 +187,6 @@ export function useLeaderboardSocket(
           clearReconnectTimer();
           setConnectionState("disconnected");
           setSocketError("Session expired. Please log in again.");
-          // Prevent infinite loops where we keep reconnecting with the same bad token.
-          clearAccessToken();
           window.location.replace(`${API_BASE_URL}/login`);
           return;
         }
