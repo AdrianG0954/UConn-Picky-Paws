@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getAccessToken } from "../auth/session";
+import { clearAccessToken, getAccessToken } from "../auth/session";
 import { buildApiWebSocketUrl, API_BASE_URL } from "../api";
 import type {
   ConnectionState,
@@ -75,6 +75,7 @@ export function useLeaderboardSocket(
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
   const selectedTabRef = useRef<LeaderboardTab>(selectedTab);
 
   useEffect(() => {
@@ -105,10 +106,16 @@ export function useLeaderboardSocket(
 
     function scheduleReconnect() {
       if (cancelled || reconnectTimerRef.current !== null) return;
+      // gets number of reconnect attempts
+      const attempt = reconnectAttemptRef.current;
+      
+      // exponential backoff depending on retry attempts
+      const delayMs = Math.min(30_000, 1000 * (2 ** attempt));
       reconnectTimerRef.current = window.setTimeout(() => {
         reconnectTimerRef.current = null;
+        reconnectAttemptRef.current = Math.min(reconnectAttemptRef.current + 1, 5);
         connect();
-      }, 1000);
+      }, delayMs);
     }
 
     function closeCurrentSocket() {
@@ -134,6 +141,7 @@ export function useLeaderboardSocket(
       // These callbacks are exposed by the WebSocket object and are fired by the browser
       socket.onopen = () => {
         if (cancelled) return;
+        reconnectAttemptRef.current = 0;
         setConnectionState("connected");
         setSocketError(null);
         socket.send(
@@ -179,6 +187,8 @@ export function useLeaderboardSocket(
           clearReconnectTimer();
           setConnectionState("disconnected");
           setSocketError("Session expired. Please log in again.");
+          // Prevent infinite loops where we keep reconnecting with the same bad token.
+          clearAccessToken();
           window.location.replace(`${API_BASE_URL}/login`);
           return;
         }
