@@ -197,6 +197,7 @@ async def websocket_leaderboard(
     code 1011 signifies an internal server error.
     """
     if not token:
+        await websocket.accept()
         await websocket.close(code=1008)
         return
     try:
@@ -204,6 +205,7 @@ async def websocket_leaderboard(
             HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         )
     except HTTPException:
+        await websocket.accept()
         await websocket.close(code=1008)
         return
 
