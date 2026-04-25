@@ -19,7 +19,7 @@ security = HTTPBearer()
 logger = logging.getLogger(__name__)
 # Configure logger to only show warnings and above.
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
