@@ -176,6 +176,7 @@ export function useLeaderboardSocket(
 
         if (event.code === 1008 || event.code === 1006) {
           cancelled = true;
+          clearReconnectTimer();
           setConnectionState("disconnected");
           setSocketError("Session expired. Please log in again.");
           window.location.replace(`${API_BASE_URL}/login`);
