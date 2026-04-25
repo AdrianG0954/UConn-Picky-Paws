@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../auth/session";
-import { buildApiWebSocketUrl } from "../api";
+import { buildApiWebSocketUrl, API_BASE_URL } from "../api";
 import type {
   ConnectionState,
   LeaderboardTab,
@@ -170,9 +170,18 @@ export function useLeaderboardSocket(
         setSocketError("Live updates are unavailable. Retrying...");
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (cancelled) return;
         socketRef.current = null;
+
+        if (event.code === 1008 || event.code === 1006) {
+          cancelled = true;
+          setConnectionState("disconnected");
+          setSocketError("Session expired. Please log in again.");
+          window.location.replace(`${API_BASE_URL}/login`);
+          return;
+        }
+
         setConnectionState("reconnecting");
         setSocketError("Live updates are unavailable. Retrying...");
         scheduleReconnect();

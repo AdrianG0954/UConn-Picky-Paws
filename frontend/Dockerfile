@@ -18,6 +18,7 @@ FROM node:22-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
+# ENV NODE_ENV=development
 
 # Railway injects PORT at runtime; default locally
 ENV PORT=3000

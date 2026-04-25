@@ -44,4 +44,4 @@ export type DiningHallTab = {
 };
 
 export type LeaderboardTab = GlobalTab | DiningHallTab;
-export type ConnectionState = "connecting" | "connected" | "reconnecting";
+export type ConnectionState = "connecting" | "connected" | "reconnecting" | "disconnected";

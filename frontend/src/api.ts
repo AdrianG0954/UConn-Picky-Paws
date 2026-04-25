@@ -9,8 +9,16 @@ import { getAccessToken } from "./auth/session";
 
 /** FastAPI backend (no `/api` prefix). Override with `VITE_API_BASE_URL` for local dev. */
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ?? "https://dininghallfoodranker-production.up.railway.app"
+  import.meta.env.VITE_API_BASE_URL ??
+  "https://dininghallfoodranker-production.up.railway.app"
 ).replace(/\/$/, "");
+
+// If we have an authentication error, we should redirect to the login page
+function checkAuthError(res: Response): void {
+  if (res.status === 401 || res.status === 403) {
+    window.location.replace(`${API_BASE_URL}/login`);
+  }
+}
 
 /** WebSocket URL for a path on the same host as `API_BASE_URL` (e.g. `/ws/leaderboard`). */
 export function buildApiWebSocketUrl(path: string, search = ""): string {
@@ -90,7 +98,10 @@ export async function fetchDiningHalls(): Promise<DiningHallOption[]> {
   const res = await fetch(`${API_BASE_URL}/dining-halls`, {
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) {
+    checkAuthError(res);
+    throw new Error(await readError(res));
+  }
   return (await res.json()) as DiningHallOption[];
 }
 
@@ -117,7 +128,10 @@ export async function fetchRandomMeals(
   const res = await fetch(`${API_BASE_URL}/meals/random?${params.toString()}`, {
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) {
+    checkAuthError(res);
+    throw new Error(await readError(res));
+  }
 
   const data = (await res.json()) as RandomMealsResponse;
   return data.meals;
@@ -140,7 +154,10 @@ export async function patchMealElo(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) {
+    checkAuthError(res);
+    throw new Error(await readError(res));
+  }
   return (await res.json()) as EloUpdateResponse;
 }
 
@@ -159,6 +176,9 @@ export async function fetchMealAvailability(
     },
   );
 
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) {
+    checkAuthError(res);
+    throw new Error(await readError(res));
+  }
   return (await res.json()) as DishAvailabilityResponse;
 }
