@@ -4,6 +4,7 @@ uvicorn==0.40.0
 pydantic==2.12.0
 python-multipart==0.0.21
 starlette==0.50.0
+uvloop==0.22.1
 
 # Database
 SQLAlchemy==2.0.46
