@@ -197,16 +197,14 @@ async def websocket_leaderboard(
     code 1011 signifies an internal server error.
     """
     if not token:
-        await websocket.accept()
-        await websocket.close(code=1008)
+        await websocket.close(code=1008, reason="Missing auth token")
         return
     try:
         AuthService().verify_login_jwt(
             HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         )
     except HTTPException:
-        await websocket.accept()
-        await websocket.close(code=1008)
+        await websocket.close(code=1008, reason="Auth failed")
         return
 
     manager = websocket.app.state.connection_manager
