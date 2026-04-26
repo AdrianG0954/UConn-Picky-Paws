@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchRandomMeals, patchMealElo } from "../api";
 import { DishCard } from "../components/DishCard";
 import { NutritionModal } from "../components/NutritionModal";
-import { PairSelectionArrow } from "../components/PairSelectionArrow";
 import { ResetCountdown } from "../components/ResetCountdown";
 import { RankScopeBar } from "../components/RankScopeBar";
 import { useRankDiningHallScope } from "../hooks/useRankDiningHallScope";
@@ -255,7 +254,9 @@ export function HeadToHead() {
                   onShowAvailability={onShowAvailability0}
                 />
               </div>
-              <PairSelectionArrow selectedIndex={selectedIndex} />
+              <h1 className="self-center text-3xl font-bold tracking-wide text-uconn-navy md:text-4xl">
+                VS.
+              </h1>
               <div className="min-w-0">
                 <DishCard
                   dish={pair[1]}
