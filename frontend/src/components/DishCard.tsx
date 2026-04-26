@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
+import pawCardIcon from "../assets/paw-card.png";
 import type { DishInfo } from "../types/meals";
 import { formatEloForDisplay } from "../utils/eloDisplay";
 
@@ -168,13 +169,25 @@ export const DishCard = memo(function DishCard({
   return (
     <article
       className={[
-        "flex min-h-0 w-full flex-col rounded-3xl border border-zinc-200 bg-white p-5 text-left shadow-md transition-shadow sm:min-h-[17rem] sm:p-6 md:min-h-[20rem] md:p-8 lg:min-h-[22rem] lg:p-10",
+        "relative flex min-h-0 w-full flex-col rounded-3xl border border-zinc-200 bg-white p-5 text-left shadow-md transition-shadow sm:min-h-[17rem] sm:p-6 md:min-h-[20rem] md:p-8 lg:min-h-[22rem] lg:p-10",
         selected ? "border-uconn-navy ring-4 ring-uconn-navy/25" : "",
         disabled
           ? "cursor-not-allowed opacity-60"
           : "cursor-pointer hover:border-uconn-navy/35",
       ].join(" ")}
     >
+      {selected ? (
+        <div className="pointer-events-none absolute left-5 top-0 z-10 -translate-y-[57%] md:left-6">
+          <div className="relative h-14 w-14 -rotate-12 md:h-16 md:w-16">
+            <img
+              src={pawCardIcon}
+              alt=""
+              aria-hidden="true"
+              className="relative h-full w-full object-contain drop-shadow-[0_4px_8px_rgba(15,23,42,0.18)]"
+            />
+          </div>
+        </div>
+      ) : null}
       <button
         type="button"
         disabled={disabled}
