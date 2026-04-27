@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 from pydantic import BaseModel
 import random
-from math import floor, ceil
+from math import floor
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, tuple_
@@ -142,13 +142,12 @@ async def get_random_meals_from_db(
             stmt = (
                 stmt
                 .order_by(func.abs(calc_win_prob - 0.5).asc())
-                .limit(ceil(row_count * 0.0277))
-                .limit(min(100, max(50, floor(row_count * 0.15))))
-                .order_by(func.random())
-                .limit(count)
+                .limit(25)
+                # .order_by(func.random())
+                # .limit(count)
             )
             res = await db_session.execute(stmt)
-            entries = res.all()
+            entries = [random.choice(res.all())]
         else:
             stmt = (
                 stmt
