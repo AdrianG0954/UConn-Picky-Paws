@@ -132,23 +132,19 @@ async def get_random_meals_from_db(
                 )
             )
 
-
-        rows = await db_session.execute(select(func.count()).select_from(stmt.subquery()))
-        row_count = rows.scalar() or 0
-
         prob = random.randint(1, 100)
         if prob <= 70:
             calc_win_prob = 1.0 / (1.0 + func.pow(10, (Dishes.elo_rating - winner_dish.elo_rating) / 400.0))
             stmt = (
                 stmt
                 .order_by(func.abs(calc_win_prob - 0.5).asc())
-                .limit(25)
-                # .order_by(func.random())
-                # .limit(count)
+                .limit(25) # 25 was found to be aggressive but not too agressive
             )
             res = await db_session.execute(stmt)
             entries = [random.choice(res.all())]
         else:
+            rows = await db_session.execute(select(func.count()).select_from(stmt.subquery()))
+            row_count = rows.scalar() or 0
             stmt = (
                 stmt
                 .order_by(Dishes.matches.asc())
