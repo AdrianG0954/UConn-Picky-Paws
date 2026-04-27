@@ -29,18 +29,17 @@ class EloUpdateResponse(BaseModel):
 	winner_new_elo: float
 	loser_new_elo: float
 
+def calculate_win_probability(a: float, b: float) -> float:
+	"""
+	Calculates the win probability of player A against player B.
+	"""
+	return 1.0 / (1.0 + math.pow(10, (b - a) / 400.0))
+
 
 class CalculateElo:
 	def __init__(self, db_session: AsyncSession):
 		self.db_session = db_session
-		self.k = 30
-
-
-	def calculate_probability(self, a: float, b: float) -> float:
-		"""
-		ELO probability formula.
-		"""
-		return 1.0 / (1.0 + math.pow(10, (a - b) / 400.0))
+		self.k = 30	
 
 		
 	async def calculate_elo(self, request: EloBody) -> tuple[float, float]:
@@ -50,7 +49,6 @@ class CalculateElo:
 
 		"""
 
-		# K-factor; how much to adjust the elo by; can be adjusted
 		outcome = 0.5 if request.draw else 1.0
 
 		# lock dishes for duration of the transaction
@@ -60,8 +58,8 @@ class CalculateElo:
 		winner_elo = elos[winner_pk]
 		loser_elo = elos[loser_pk]
 
-		probability_winner = self.calculate_probability(loser_elo, winner_elo)
-		probability_loser = self.calculate_probability(winner_elo, loser_elo)
+		probability_loser = calculate_win_probability(loser_elo, winner_elo)
+		probability_winner = calculate_win_probability(winner_elo, loser_elo)
 
 		winner_new_elo = winner_elo + self.k * (outcome - probability_winner)
 		loser_new_elo = loser_elo + self.k * ((1.0 - outcome) - probability_loser)

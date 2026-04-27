@@ -1,6 +1,6 @@
 from uuid import UUID
 import urllib.parse
-from typing import Annotated, List, Optional, Tuple
+from typing import Annotated, List, Optional
 import xml.etree.ElementTree as ET
 
 from dotenv import load_dotenv

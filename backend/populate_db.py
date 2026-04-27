@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy import update, delete
+from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from backend.server import _db_session_maker, logger
@@ -101,4 +101,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
