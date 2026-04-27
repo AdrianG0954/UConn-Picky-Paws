@@ -58,6 +58,7 @@ async def populate_db():
                             "name": dish['name'],
                             "nutrition_info": dish['nutrition_facts'],
                             "elo_rating": 1000.0,  # default elo rating
+                            "matches": 0,  # default matches played
                         }
 
         async with _db_session_maker() as db_session:
@@ -100,3 +101,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    

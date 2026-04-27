@@ -1,6 +1,6 @@
 from uuid import UUID
 import urllib.parse
-from typing import Annotated, List, Optional, Dict
+from typing import Annotated, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
 from dotenv import load_dotenv
@@ -137,8 +137,10 @@ async def get_random_meals(
         pattern="^[1-2]$",
         description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids).",
     ),
-    exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids when count=1.")] = None,
-    exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
+    exclude_names: Annotated[Optional[List[str]], Query(description="same as exclude_dining_hall_ids when count=1.")] = None,
+    exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="same as exclude_names; same length.")] = None,
+    winner_dining_hall_id: Annotated[Optional[UUID], Query(description="When count=1, the hall id of the dish that won to use for fair matchmaking.")]=None,
+    winner_name: Annotated[Optional[str], Query(description="When count=1, the name of the dish that won to use for fair matchmaking.")]=None,
 ) -> RandomMealsResponse:
     """Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
     try:
@@ -151,6 +153,8 @@ async def get_random_meals(
             filter_dining_halls=filter_dining_halls,
             exclude_names=exclude_names,
             exclude_dining_hall_ids=exclude_dining_hall_ids,
+            winner_dining_hall_id=winner_dining_hall_id,
+            winner_name=winner_name,
         )
         return response
     except HTTPException:

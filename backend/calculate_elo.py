@@ -120,7 +120,7 @@ class CalculateElo:
 					Dishes.dining_hall_id == dining_hall_id,
 					Dishes.name == name,
 				)
-				.values(elo_rating=new_elo)
+				.values(elo_rating=new_elo, matches=Dishes.matches + 1)
 			)
 			await self.db_session.execute(stmt)
 		except Exception as e:

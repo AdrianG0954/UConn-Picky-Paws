@@ -34,11 +34,13 @@ def upgrade() -> None:
     sa.Column('name', sa.TEXT(), nullable=False),
     sa.Column('nutrition_info', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('elo_rating', sa.Float(), server_default=sa.text('1000.0'), nullable=False),
+    sa.Column('matches', sa.Integer(), server_default=sa.text('0'), nullable=False),
     sa.ForeignKeyConstraint(['dining_hall_id'], ['dining_halls.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('dining_hall_id', 'name')
     )
     op.create_index('ix_dishes_dining_hall_id_elo_rating', 'dishes', ['dining_hall_id', 'elo_rating'], unique=False)
     op.create_index('ix_dishes_elo_rating', 'dishes', ['elo_rating'], unique=False)
+    op.create_index('ix_dishes_matches', 'dishes', ['matches'], unique=False)
     # ### end Alembic commands ###
 
 

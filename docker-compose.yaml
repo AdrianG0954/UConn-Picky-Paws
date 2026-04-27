@@ -13,8 +13,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    # volumes:
-    #   - sdp_test_db_data:/var/lib/postgresql # use defined volume
 
   backend:
     restart: unless-stopped
@@ -48,7 +46,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    # Named volume hides image node_modules; sync deps from lockfile on every start.
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
     ports:
       - "5173:5173"
@@ -70,6 +67,8 @@ services:
     restart: on-failure
     depends_on:
       backend:
+        condition: service_healthy
+      database:
         condition: service_healthy
 
 volumes:
