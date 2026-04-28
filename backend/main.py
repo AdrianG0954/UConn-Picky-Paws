@@ -99,16 +99,15 @@ async def update_elo(
         )
 
         manager = app_request.app.state.connection_manager
-        affected_dining_hall_ids = {
-            request.winner.dining_hall_id,
-            request.loser.dining_hall_id,
-        }
         try:
-            # publish leaderboard snapshots to all ws subscribers
+            # only send updates if the top 100 changes for the scope it pertains to
+            affected_entries = [
+                (winner_new_elo, request.winner.dining_hall_id, request.winner.name), 
+                (loser_new_elo, request.loser.dining_hall_id, request.loser.name)]
             await publish_leaderboard_snapshots(
                 db_session=db_session,
                 manager=manager,
-                affected_dining_hall_ids=affected_dining_hall_ids,
+                affected_entries=affected_entries
             )
         except Exception:
             logger.exception("Failed to publish leaderboard snapshots after Elo update.")
@@ -194,7 +193,7 @@ async def websocket_leaderboard(
     WebSocket endpoint for the leaderboard.
 
     TL;DR; User subscribes to the leaderboard for live updates. 
-    When the elo of a dish in their subscribed board changes, 
+    When the elo of a dish in their subscribed board changes(and that dish is in the top 100), 
     we send them the updated leaderboard.
 
     NOTE: code 1008 signifies a policy error (auth failure in this case). 
