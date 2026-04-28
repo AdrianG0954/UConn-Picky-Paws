@@ -172,30 +172,46 @@ async def publish_leaderboard_snapshots(
 ) -> None:
     """
     Publish leaderboard snapshot for the affected dining halls.
+
+    NOTE: affected_entries can only have 2 elements.
     """
+    if len(affected_entries) != 2:
+        raise ValueError("Invalid affected_entries. Expected 2 elements.")
+
     publish_tasks = []
-    global_updated = False
+    global_updated, global_top_100 = False, None
+    prev_hall_id, prev_hall_published = None, False
+
     for elo, hall_id, name in affected_entries:
         curr_scope = dining_hall_scope(hall_id)
         if manager.has_subscribers(curr_scope):
-            top_100 = await _get_scope_entries(db_session, curr_scope)
+            if not (prev_hall_id == hall_id and prev_hall_published):
+                top_100 = await _get_scope_entries(db_session, curr_scope) 
+                if top_100:
+                    bottom_rank = top_100[-1]
 
-            bottom_rank = top_100[-1]
-            if elo >= bottom_rank.elo or (elo == bottom_rank.elo and name <= bottom_rank.name):
-                publish_tasks.append(manager.publish_snapshot(curr_scope, top_100))
+                    published_curr = elo > bottom_rank.elo or (elo == bottom_rank.elo and name <= bottom_rank.name)
+                    if published_curr:
+                        publish_tasks.append(manager.publish_snapshot(curr_scope, top_100))
+                    prev_hall_published = published_curr
+
+        prev_hall_id = hall_id
 
         if not global_updated: 
             _global_scope = global_scope()
             if not manager.has_subscribers(_global_scope):
                 continue
 
-            top_100 = await _get_scope_entries(db_session, _global_scope)
+            if global_top_100 is None:
+                global_top_100 = await _get_scope_entries(db_session, _global_scope)
+                if not global_top_100:
+                    continue
 
-            bottom_rank = top_100[-1]
-            if elo >= bottom_rank.elo or (elo == bottom_rank.elo and name <= bottom_rank.name):
-                publish_tasks.append(manager.publish_snapshot(_global_scope, top_100))
+            bottom_rank = global_top_100[-1]
+            if elo > bottom_rank.elo or (elo == bottom_rank.elo and name <= bottom_rank.name):
+                publish_tasks.append(manager.publish_snapshot(_global_scope, global_top_100))
                 global_updated = True
-
+ 
     # Publish snapshots concurrently (network operations are safe to parallelize)
     await asyncio.gather(*publish_tasks, return_exceptions=True)
 
