@@ -185,6 +185,7 @@ async def publish_leaderboard_snapshots(
     for elo, hall_id, name in affected_entries:
         curr_scope = dining_hall_scope(hall_id)
         if manager.has_subscribers(curr_scope):
+            # if the prev hall id is the same and we already published, skip fetching
             if not (prev_hall_id == hall_id and prev_hall_published):
                 top_100 = await _get_scope_entries(db_session, curr_scope) 
                 if top_100:
@@ -197,6 +198,7 @@ async def publish_leaderboard_snapshots(
 
         prev_hall_id = hall_id
 
+        # check if we need to make a global update, but dont fetch if we already published
         if not global_updated: 
             _global_scope = global_scope()
             if not manager.has_subscribers(_global_scope):
