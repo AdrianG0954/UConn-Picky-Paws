@@ -93,7 +93,7 @@ async def update_elo(
         # verify the user is authenticated (will raise an exception if not)
         AuthService().verify_login_jwt(credentials)
 
-        # calculate the new elo for the winning and losing dishes
+        # updates the elo for the winner and user (in the DB as well)
         winner_new_elo, loser_new_elo = await CalculateElo(db_session=db_session).calculate_elo(
             request=request
         )
@@ -101,13 +101,10 @@ async def update_elo(
         manager = app_request.app.state.connection_manager
         try:
             # only send updates if the top 100 changes for the scope it pertains to
-            affected_entries = [
-                (winner_new_elo, request.winner.dining_hall_id, request.winner.name), 
-                (loser_new_elo, request.loser.dining_hall_id, request.loser.name)]
             await publish_leaderboard_snapshots(
                 db_session=db_session,
                 manager=manager,
-                affected_entries=affected_entries
+                affected_entries=[request.winner.dining_hall_id, request.loser.dining_hall_id]
             )
         except Exception:
             logger.exception("Failed to publish leaderboard snapshots after Elo update.")
@@ -146,6 +143,9 @@ async def get_random_meals(
         # verify the user is authenticated (will raise an exception if not)
         AuthService().verify_login_jwt(credentials)
 
+        if count == 1 and (winner_dining_hall_id is None or winner_name is None):
+            raise ValueError("winner_dining_hall_id and winner_name must be provided when count is 1")
+
         response = await get_random_meals_from_db(
             db_session=db_session,
             count=int(count),
@@ -158,6 +158,9 @@ async def get_random_meals(
         return response
     except HTTPException:
         raise
+    except ValueError as ve:
+        logger.error(f"Error fetching random meals: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to fetch random meals")
     except Exception as e:
         logger.error(f"Error fetching random meals: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error while fetching random meals")

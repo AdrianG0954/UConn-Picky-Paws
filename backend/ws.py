@@ -49,8 +49,7 @@ class ConnectionManager:
         if not subscribers:
             return
 
-        # removes current socket from the subscribers set
-        # this triggers a WebSocket disconnect event
+        # remove the socket from this scope's subscribers set
         subscribers.discard(websocket)
         if not subscribers:
             del self.scope_subscriptions[previous_scope]
@@ -168,7 +167,7 @@ async def _get_scope_entries(
 async def publish_leaderboard_snapshots(
     db_session: AsyncSession,
     manager: ConnectionManager,
-    affected_entries: List[Tuple[float, UUID, str]]
+    affected_entries: List[UUID]
 ) -> None:
     """
     Publish leaderboard snapshot for the affected dining halls.
@@ -178,45 +177,31 @@ async def publish_leaderboard_snapshots(
     if len(affected_entries) != 2:
         raise ValueError("Invalid affected_entries. Expected 2 elements.")
 
-    publish_tasks = []
-    global_updated, global_top_100 = False, None
-    prev_hall_id, prev_hall_published = None, False
+    # determines the scopes to publish snapshots for
+    scopes: list[LeaderboardScope] = []
+    if manager.has_subscribers(global_scope()):
+        scopes.append(global_scope())
 
-    for elo, hall_id, name in affected_entries:
-        curr_scope = dining_hall_scope(hall_id)
-        if manager.has_subscribers(curr_scope):
-            # if the prev hall id is the same and we already published, skip fetching
-            if not (prev_hall_id == hall_id and prev_hall_published):
-                top_100 = await _get_scope_entries(db_session, curr_scope) 
-                if top_100:
-                    bottom_rank = top_100[-1]
+    scopes.extend(
+        dining_hall_scope(dining_hall_id)
+        for dining_hall_id in affected_entries
+        if manager.has_subscribers(dining_hall_scope(dining_hall_id))
+    )
+    if not scopes:
+        return
 
-                    published_curr = elo > bottom_rank.elo or (elo == bottom_rank.elo and name <= bottom_rank.name)
-                    if published_curr:
-                        publish_tasks.append(manager.publish_snapshot(curr_scope, top_100))
-                    prev_hall_published = published_curr
+    # Fetch all entries sequentially (AsyncSession is not safe for concurrent use)
+    scope_entries_map: dict[LeaderboardScope, list[LeaderboardEntry]] = {}
+    for scope in scopes:
+        entries = await _get_scope_entries(db_session, scope)
+        scope_entries_map[scope] = entries
 
-        prev_hall_id = hall_id
-
-        # check if we need to make a global update, but dont fetch if we already published
-        if not global_updated: 
-            _global_scope = global_scope()
-            if not manager.has_subscribers(_global_scope):
-                continue
-
-            if global_top_100 is None:
-                global_top_100 = await _get_scope_entries(db_session, _global_scope)
-                if not global_top_100:
-                    continue
-
-            bottom_rank = global_top_100[-1]
-            if elo > bottom_rank.elo or (elo == bottom_rank.elo and name <= bottom_rank.name):
-                publish_tasks.append(manager.publish_snapshot(_global_scope, global_top_100))
-                global_updated = True
- 
     # Publish snapshots concurrently (network operations are safe to parallelize)
+    publish_tasks = [
+        manager.publish_snapshot(scope, entries)
+        for scope, entries in scope_entries_map.items()
+    ]
     await asyncio.gather(*publish_tasks, return_exceptions=True)
-
 
 async def handle_leaderboard_websocket(
     websocket: WebSocket,

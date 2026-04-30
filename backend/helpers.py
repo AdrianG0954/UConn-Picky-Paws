@@ -110,10 +110,7 @@ async def get_random_meals_from_db(
     entries = None
     stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id).where(DiningHalls.name.in_(filter_dining_halls))
 
-    if count == 1:
-        if winner_dining_hall_id is None or winner_name is None:
-            raise ValueError("winner_dining_hall_id and winner_name must be provided when count is 1")
-
+    if count == 1: 
         winner_stmt = select(Dishes).where(Dishes.dining_hall_id == winner_dining_hall_id, Dishes.name == winner_name)
         winner_res = await db_session.execute(winner_stmt)
         winner_dish = winner_res.scalar_one_or_none()
@@ -141,7 +138,8 @@ async def get_random_meals_from_db(
                 .limit(25) # 25 was found to be aggressive but not too agressive
             )
             res = await db_session.execute(stmt)
-            entries = [random.choice(res.all())]
+            res_all = res.all()
+            entries = [random.choice(res_all)] if res_all else []
         else:
             rows = await db_session.execute(select(func.count()).select_from(stmt.subquery()))
             row_count = rows.scalar() or 0
