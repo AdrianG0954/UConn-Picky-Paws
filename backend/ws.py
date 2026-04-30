@@ -167,16 +167,12 @@ async def _get_scope_entries(
 async def publish_leaderboard_snapshots(
     db_session: AsyncSession,
     manager: ConnectionManager,
-    affected_entries: List[UUID]
+    affected_dining_hall_ids: Set[UUID]
 ) -> None:
     """
     Publish leaderboard snapshot for the affected dining halls.
-
-    NOTE: affected_entries can only have 2 elements.
+    NOTE: affected_dining_hall_ids can only have 2 elements.
     """
-    if len(affected_entries) != 2:
-        raise ValueError("Invalid affected_entries. Expected 2 elements.")
-
     # determines the scopes to publish snapshots for
     scopes: list[LeaderboardScope] = []
     if manager.has_subscribers(global_scope()):
@@ -184,7 +180,7 @@ async def publish_leaderboard_snapshots(
 
     scopes.extend(
         dining_hall_scope(dining_hall_id)
-        for dining_hall_id in affected_entries
+        for dining_hall_id in affected_dining_hall_ids
         if manager.has_subscribers(dining_hall_scope(dining_hall_id))
     )
     if not scopes:

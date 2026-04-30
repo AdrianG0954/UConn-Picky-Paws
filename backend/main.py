@@ -104,7 +104,7 @@ async def update_elo(
             await publish_leaderboard_snapshots(
                 db_session=db_session,
                 manager=manager,
-                affected_entries=[request.winner.dining_hall_id, request.loser.dining_hall_id]
+                affected_dining_hall_ids=set([request.winner.dining_hall_id, request.loser.dining_hall_id])
             )
         except Exception:
             logger.exception("Failed to publish leaderboard snapshots after Elo update.")
