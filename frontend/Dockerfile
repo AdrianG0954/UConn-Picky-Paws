@@ -4,21 +4,21 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 # for local dev 
-COPY package.json package-lock.json ./
-# COPY ./frontend/package.json ./frontend/package-lock.json ./
+# COPY package.json package-lock.json ./
+COPY ./frontend/package.json ./frontend/package-lock.json ./
 RUN npm ci
 
 # for local dev
-COPY . .
-# COPY ./frontend ./
+# COPY . .
+COPY ./frontend ./
 RUN npm run build
 
 ### Runtime stage
 FROM node:22-alpine AS runtime
 
 WORKDIR /app
-# ENV NODE_ENV=production
-ENV NODE_ENV=development
+ENV NODE_ENV=production
+# ENV NODE_ENV=development
 
 # Railway injects PORT at runtime; default locally
 ENV PORT=3000
