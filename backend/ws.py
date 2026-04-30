@@ -173,6 +173,10 @@ async def publish_leaderboard_snapshots(
     Publish leaderboard snapshot for the affected dining halls.
     NOTE: affected_dining_hall_ids can only have 2 elements.
     """
+    if len(affected_dining_hall_ids) > 2:
+        raise ValueError(
+            "affected_dining_hall_ids can contain at most 2 elements."
+        )
     # determines the scopes to publish snapshots for
     scopes: list[LeaderboardScope] = []
     if manager.has_subscribers(global_scope()):
