@@ -100,7 +100,7 @@ async def update_elo(
 
         manager = app_request.app.state.connection_manager
         try:
-            # Send updates to all scopes that have changed and have subcribers
+            # Send updates to all scopes that have changed and have subscribers
             await publish_leaderboard_snapshots(
                 db_session=db_session,
                 manager=manager,
