@@ -107,7 +107,7 @@ async def get_random_meals_from_db(
 
     NOTE: filter_dining_halls is to limit the results to only the halls the user specifies.
     """
-    entries = None
+    entries, bottom_15_subquery = None, None
     stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id).where(DiningHalls.name.in_(filter_dining_halls))
 
     if count == 1: 
@@ -135,7 +135,7 @@ async def get_random_meals_from_db(
             stmt = (
                 stmt
                 .order_by(func.abs(calc_win_prob - 0.5).asc())
-                .limit(25) # 25 was found to be aggressive but not too agressive
+                .limit(25) # 25 was found to be aggressive but not too aggressive
             )
             res = await db_session.execute(stmt)
             res_all = res.all()
@@ -143,17 +143,21 @@ async def get_random_meals_from_db(
         else:
             rows = await db_session.execute(select(func.count()).select_from(stmt.subquery()))
             row_count = rows.scalar() or 0
-            stmt = (
+            bottom_15_subquery = (
                 stmt
                 .order_by(Dishes.matches.asc())
                 .limit(
-                    floor(row_count * 0.15)
+                    max(1, floor(row_count * 0.15))
                 )
+                .subquery()
             )
 
     # Random is fine since our dataset is not too large (in the thousands)
     if entries is None:
-        stmt = stmt.order_by(func.random()).limit(count)
+        if bottom_15_subquery is not None:
+            stmt = select(bottom_15_subquery).order_by(func.random()).limit(count)
+        else:
+            stmt = stmt.order_by(func.random()).limit(count)
         res = await db_session.execute(stmt)
         entries = res.all()
 
