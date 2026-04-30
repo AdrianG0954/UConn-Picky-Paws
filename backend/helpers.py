@@ -149,15 +149,14 @@ async def get_random_meals_from_db(
                 .limit(
                     max(1, floor(row_count * 0.15))
                 )
-                .subquery()
             )
+            res = await db_session.execute(bottom_15_subquery)
+            res_all = res.all()
+            entries = random.sample(res_all, count) if res_all else []
 
     # Random is fine since our dataset is not too large (in the thousands)
     if entries is None:
-        if bottom_15_subquery is not None:
-            stmt = select(bottom_15_subquery).order_by(func.random()).limit(count)
-        else:
-            stmt = stmt.order_by(func.random()).limit(count)
+        stmt = stmt.order_by(func.random()).limit(count)
         res = await db_session.execute(stmt)
         entries = res.all()
 
