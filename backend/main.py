@@ -100,7 +100,7 @@ async def update_elo(
 
         manager = app_request.app.state.connection_manager
         try:
-            # only send updates if the top 100 changes for the scope it pertains to
+            # Send updates to all scopes that have changed and have subcribers
             await publish_leaderboard_snapshots(
                 db_session=db_session,
                 manager=manager,
@@ -143,7 +143,7 @@ async def get_random_meals(
         # verify the user is authenticated (will raise an exception if not)
         AuthService().verify_login_jwt(credentials)
 
-        if count == 1 and (winner_dining_hall_id is None or winner_name is None):
+        if count == "1" and (winner_dining_hall_id is None or winner_name is None):
             raise ValueError("winner_dining_hall_id and winner_name must be provided when count is 1")
 
         response = await get_random_meals_from_db(
@@ -196,7 +196,7 @@ async def websocket_leaderboard(
     WebSocket endpoint for the leaderboard.
 
     TL;DR; User subscribes to the leaderboard for live updates. 
-    When the elo of a dish in their subscribed board changes(and that dish is in the top 100), 
+    When the elo of a dish in their subscribed board changes,
     we send them the updated leaderboard.
 
     NOTE: code 1008 signifies a policy error (auth failure in this case). 
