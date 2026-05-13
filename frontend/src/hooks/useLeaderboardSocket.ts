@@ -106,16 +106,10 @@ export function useLeaderboardSocket(
 
     function scheduleReconnect() {
       if (cancelled || reconnectTimerRef.current !== null) return;
-      // gets number of reconnect attempts
-      const attempt = reconnectAttemptRef.current;
-      
-      // exponential backoff depending on retry attempts
-      const delayMs = Math.min(30_000, 1000 * (2 ** attempt));
       reconnectTimerRef.current = window.setTimeout(() => {
         reconnectTimerRef.current = null;
-        reconnectAttemptRef.current = Math.min(reconnectAttemptRef.current + 1, 5);
         connect();
-      }, delayMs);
+      }, 2000);
     }
 
     function closeCurrentSocket() {
