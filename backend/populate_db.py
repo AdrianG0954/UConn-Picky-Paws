@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy import update, delete
+from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from backend.server import _db_session_maker, logger
@@ -58,6 +58,7 @@ async def populate_db():
                             "name": dish['name'],
                             "nutrition_info": dish['nutrition_facts'],
                             "elo_rating": 1000.0,  # default elo rating
+                            "matches": 0,  # default matches played
                         }
 
         async with _db_session_maker() as db_session:

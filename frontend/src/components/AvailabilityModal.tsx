@@ -174,7 +174,7 @@ export function AvailabilityModal({
 
         {!loading && !requestError && availability && !hasResults ? (
           <p className="mb-4 text-sm text-zinc-600">
-            This item is not available this week.
+            This item is no longer available at this dining hall for the current week.
           </p>
         ) : null}
 

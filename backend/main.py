@@ -1,6 +1,6 @@
 from uuid import UUID
 import urllib.parse
-from typing import Annotated, List, Optional, Dict
+from typing import Annotated, List, Optional
 import xml.etree.ElementTree as ET
 
 from dotenv import load_dotenv
@@ -93,22 +93,18 @@ async def update_elo(
         # verify the user is authenticated (will raise an exception if not)
         AuthService().verify_login_jwt(credentials)
 
-        # calculate the new elo for the winning and losing dishes
+        # updates the elo for the winner and user (in the DB as well)
         winner_new_elo, loser_new_elo = await CalculateElo(db_session=db_session).calculate_elo(
             request=request
         )
 
         manager = app_request.app.state.connection_manager
-        affected_dining_hall_ids = {
-            request.winner.dining_hall_id,
-            request.loser.dining_hall_id,
-        }
         try:
-            # publish leaderboard snapshots to all ws subscribers
+            # Send updates to all scopes that have changed and have subscribers
             await publish_leaderboard_snapshots(
                 db_session=db_session,
                 manager=manager,
-                affected_dining_hall_ids=affected_dining_hall_ids,
+                affected_dining_hall_ids=set([request.winner.dining_hall_id, request.loser.dining_hall_id])
             )
         except Exception:
             logger.exception("Failed to publish leaderboard snapshots after Elo update.")
@@ -137,13 +133,18 @@ async def get_random_meals(
         pattern="^[1-2]$",
         description="2 = two random meals. 1 = one random meal (optional exclusions: parallel exclude_names, exclude_dining_hall_ids).",
     ),
-    exclude_names: Annotated[Optional[List[str]], Query(description="Parallel to exclude_dining_hall_ids when count=1.")] = None,
-    exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="Parallel to exclude_names; same length.")] = None,
+    exclude_names: Annotated[Optional[List[str]], Query(description="same as exclude_dining_hall_ids when count=1.")] = None,
+    exclude_dining_hall_ids: Annotated[Optional[List[UUID]], Query(description="same as exclude_names; same length.")] = None,
+    winner_dining_hall_id: Annotated[Optional[UUID], Query(description="When count=1, the hall id of the dish that won to use for fair matchmaking.")]=None,
+    winner_name: Annotated[Optional[str], Query(description="When count=1, the name of the dish that won to use for fair matchmaking.")]=None,
 ) -> RandomMealsResponse:
     """Random pair for head-to-head (count=2) or one replacement dish (count=1 + exclusions)."""
     try:
         # verify the user is authenticated (will raise an exception if not)
         AuthService().verify_login_jwt(credentials)
+
+        if count == "1" and (winner_dining_hall_id is None or winner_name is None):
+            raise ValueError("winner_dining_hall_id and winner_name must be provided when count is 1")
 
         response = await get_random_meals_from_db(
             db_session=db_session,
@@ -151,10 +152,15 @@ async def get_random_meals(
             filter_dining_halls=filter_dining_halls,
             exclude_names=exclude_names,
             exclude_dining_hall_ids=exclude_dining_hall_ids,
+            winner_dining_hall_id=winner_dining_hall_id,
+            winner_name=winner_name,
         )
         return response
     except HTTPException:
         raise
+    except ValueError as ve:
+        logger.error(f"Error fetching random meals: {ve}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to fetch random meals")
     except Exception as e:
         logger.error(f"Error fetching random meals: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error while fetching random meals")
@@ -190,7 +196,7 @@ async def websocket_leaderboard(
     WebSocket endpoint for the leaderboard.
 
     TL;DR; User subscribes to the leaderboard for live updates. 
-    When the elo of a dish in their subscribed board changes, 
+    When the elo of a dish in their subscribed board changes,
     we send them the updated leaderboard.
 
     NOTE: code 1008 signifies a policy error (auth failure in this case). 
@@ -223,6 +229,11 @@ async def get_meal_availability(
     hall_name: str = Query(description="Dining hall name"),
 ) -> DishAvailabilityResponse:
     try:
+        AuthService().verify_login_jwt(credentials)
+    except HTTPException:
+        raise
+
+    try:
         hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
     except KeyError as exc:
         raise HTTPException(
@@ -231,12 +242,11 @@ async def get_meal_availability(
         ) from exc
 
     try:
-        # Verify the user is authenticated 
-        AuthService().verify_login_jwt(credentials)
-
         return await get_dish_availability(dish_name, hall_info)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(
             f"Error fetching weekly availability for {dish_name} in {hall_name}: {exc}",

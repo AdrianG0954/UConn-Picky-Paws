@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from typing import Literal, TypeAlias, Optional, Tuple
+from typing import Literal, TypeAlias, Optional, Tuple, Set, Dict, List
 from uuid import UUID
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -8,6 +8,7 @@ from starlette.websockets import WebSocketState
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from backend.helpers import LeaderboardEntry, get_leaderboard_entries
+
 
 ScopeKind = Literal["global", "dining_hall"]
 LeaderboardScope: TypeAlias = Tuple[ScopeKind, Optional[UUID]]
@@ -23,18 +24,23 @@ def dining_hall_scope(dining_hall_id: UUID) -> LeaderboardScope:
 
 class ConnectionManager:
     def __init__(self):
-        self.scope_subscriptions: dict[LeaderboardScope, set[WebSocket]] = defaultdict(set)
-        self.websocket_scopes: dict[WebSocket, LeaderboardScope] = {}
+        # Keeps track of scopes and their subscribers
+        self.scope_subscriptions: Dict[LeaderboardScope, Set[WebSocket]] = defaultdict(set)
+        # keeps track of a sockets current scope
+        self.websocket_scopes: Dict[WebSocket, LeaderboardScope] = {}
 
-    async def connect(self, websocket: WebSocket):
+
+    async def connect(self, websocket: WebSocket) -> None:
         # Safe to call even if the route already accepted.
         if websocket.application_state != WebSocketState.CONNECTED:
             await websocket.accept()
 
-    def disconnect(self, websocket: WebSocket):
+
+    def disconnect(self, websocket: WebSocket) -> None:
         """
         Disconnect a WebSocket from the connection manager.
         """
+        # gets the previous scope for a socket (can be none if first time connecting)
         previous_scope = self.websocket_scopes.pop(websocket, None)
         if previous_scope is None:
             return
@@ -43,9 +49,11 @@ class ConnectionManager:
         if not subscribers:
             return
 
+        # remove the socket from this scope's subscribers set
         subscribers.discard(websocket)
         if not subscribers:
             del self.scope_subscriptions[previous_scope]
+
 
     def subscribe_leaderboard(
         self,
@@ -55,10 +63,14 @@ class ConnectionManager:
         """
         Subscribe a WebSocket to a specific leaderboard scope.
         """
+        # disconnect from the previous scope (if applicable)
         self.disconnect(websocket)
+
+        # adds socket to scope subscribers and keeps track of its current scope
         self.scope_subscriptions[scope].add(websocket)
         self.websocket_scopes[websocket] = scope
         return scope
+
 
     def has_subscribers(self, scope: LeaderboardScope) -> bool:
         """
@@ -66,13 +78,15 @@ class ConnectionManager:
         """
         return bool(self.scope_subscriptions.get(scope))
 
-    async def send_personal_message(self, message: dict, websocket: WebSocket):
+
+    async def send_personal_message(self, message: Dict, websocket: WebSocket):
         await websocket.send_json(message)
+
 
     async def publish_snapshot(
         self,
         scope: LeaderboardScope,
-        entries: list[LeaderboardEntry],
+        entries: List[LeaderboardEntry],
     ):
         """
         Publish a snapshot of the leaderboard to all subscribers.
@@ -82,9 +96,9 @@ class ConnectionManager:
             return
 
         message = _build_snapshot_message(scope, entries)
+
+        # send updated leaderboard to all subscribers
         failed_websockets: list[WebSocket] = []
-
-
         for websocket in subscribers:
             try:
                 await websocket.send_json(message)
@@ -97,13 +111,13 @@ class ConnectionManager:
 
 def _build_snapshot_message(
     scope: LeaderboardScope,
-    entries: list[LeaderboardEntry],
-) -> dict:
+    entries: List[LeaderboardEntry],
+) -> Dict[str, object]:
     """
     builds snapshot of what the leaderboard looks like for a specific scope
     """
     scope_kind, dining_hall_id = scope
-    message: dict[str, object] = {
+    message: Dict[str, object] = {
         "type": "leaderboard_snapshot",
         "scope": scope_kind,
         "entries": [entry.model_dump(mode="json") for entry in entries],
@@ -113,7 +127,10 @@ def _build_snapshot_message(
     return message
 
 
-def _validate_leaderboard_scope(message: dict) -> LeaderboardScope:
+def _validate_leaderboard_scope(message: Dict) -> LeaderboardScope:
+    """
+    Ensures scope exists and returns it.
+    """
     scope = message.get("scope")
     if scope == "global":
         return global_scope()
@@ -150,27 +167,32 @@ async def _get_scope_entries(
 async def publish_leaderboard_snapshots(
     db_session: AsyncSession,
     manager: ConnectionManager,
-    affected_dining_hall_ids: set[UUID],
-):
+    affected_dining_hall_ids: Set[UUID]
+) -> None:
     """
-    Publish leaderboard snapshots for the affected dining halls.
+    Publish leaderboard snapshot for the affected dining halls.
+    NOTE: affected_dining_hall_ids can only have 2 elements.
     """
+    if len(affected_dining_hall_ids) > 2:
+        raise ValueError(
+            "affected_dining_hall_ids can contain at most 2 elements."
+        )
     # determines the scopes to publish snapshots for
-    scopes: list[LeaderboardScope] = [global_scope()]
+    scopes: list[LeaderboardScope] = []
+    if manager.has_subscribers(global_scope()):
+        scopes.append(global_scope())
+
     scopes.extend(
         dining_hall_scope(dining_hall_id)
-        for dining_hall_id in sorted(affected_dining_hall_ids, key=str)
+        for dining_hall_id in affected_dining_hall_ids
+        if manager.has_subscribers(dining_hall_scope(dining_hall_id))
     )
-
-    # Filter scopes to only those with subscribers
-    scopes_with_subscribers = [scope for scope in scopes if manager.has_subscribers(scope)]
-    
-    if not scopes_with_subscribers:
+    if not scopes:
         return
 
     # Fetch all entries sequentially (AsyncSession is not safe for concurrent use)
     scope_entries_map: dict[LeaderboardScope, list[LeaderboardEntry]] = {}
-    for scope in scopes_with_subscribers:
+    for scope in scopes:
         entries = await _get_scope_entries(db_session, scope)
         scope_entries_map[scope] = entries
 
@@ -204,7 +226,8 @@ async def handle_leaderboard_websocket(
                     # create a new db session per fetch to grab up-to-date entries
                     async with db_session_maker() as db_session:
                         entries = await _get_scope_entries(db_session, scope)
-                    
+
+                    # send leaderboard snapshot to the subscriber
                     await manager.send_personal_message(
                         _build_snapshot_message(scope, entries),
                         websocket,

@@ -1,9 +1,8 @@
-"""
-Shared Pydantic response models and DB helpers for meals and leaderboard endpoints.
-"""
 from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 from pydantic import BaseModel
+import random
+from math import floor
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, tuple_
@@ -96,6 +95,8 @@ async def get_random_meals_from_db(
     filter_dining_halls: List[str],
     exclude_names: Optional[List[str]] = None,
     exclude_dining_hall_ids: Optional[List[UUID]] = None,
+    winner_dining_hall_id: Optional[UUID] = None,
+    winner_name: Optional[str] = None
 ) -> RandomMealsResponse:
     """
     Two behaviors:
@@ -106,9 +107,16 @@ async def get_random_meals_from_db(
 
     NOTE: filter_dining_halls is to limit the results to only the halls the user specifies.
     """
+    entries, bottom_15_subquery = None, None
     stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id).where(DiningHalls.name.in_(filter_dining_halls))
 
-    if count == 1:
+    if count == 1: 
+        winner_stmt = select(Dishes).where(Dishes.dining_hall_id == winner_dining_hall_id, Dishes.name == winner_name)
+        winner_res = await db_session.execute(winner_stmt)
+        winner_dish = winner_res.scalar_one_or_none()
+        if winner_dish is None:
+            raise ValueError("winner is not a valid dish")
+
         # builds a tuple containing all (name, dining_hall_id) to exclude
         exclusions = _merge_exclusions(
             exclude_names, exclude_dining_hall_ids
@@ -121,11 +129,36 @@ async def get_random_meals_from_db(
                 )
             )
 
-    # Random is fine since our dataset is not too large (in the thousands)
-    stmt = stmt.order_by(func.random()).limit(count)
+        prob = random.randint(1, 100)
+        if prob <= 70:
+            calc_win_prob = 1.0 / (1.0 + func.pow(10, (Dishes.elo_rating - winner_dish.elo_rating) / 400.0))
+            stmt = (
+                stmt
+                .order_by(func.abs(calc_win_prob - 0.5).asc())
+                .limit(25) # 25 was found to be aggressive but not too aggressive
+            )
+            res = await db_session.execute(stmt)
+            res_all = res.all()
+            entries = [random.choice(res_all)] if res_all else []
+        else:
+            rows = await db_session.execute(select(func.count()).select_from(stmt.subquery()))
+            row_count = rows.scalar() or 0
+            bottom_15_subquery = (
+                stmt
+                .order_by(Dishes.matches.asc())
+                .limit(
+                    max(1, floor(row_count * 0.15))
+                )
+            )
+            res = await db_session.execute(bottom_15_subquery)
+            res_all = res.all()
+            entries = random.sample(res_all, count) if res_all else []
 
-    res = await db_session.execute(stmt)
-    entries = res.all()
+    # Random is fine since our dataset is not too large (in the thousands)
+    if entries is None:
+        stmt = stmt.order_by(func.random()).limit(count)
+        res = await db_session.execute(stmt)
+        entries = res.all()
 
     return RandomMealsResponse(
         meals=[

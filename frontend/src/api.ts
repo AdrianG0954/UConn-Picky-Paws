@@ -9,8 +9,7 @@ import { getAccessToken } from "./auth/session";
 
 /** FastAPI backend (no `/api` prefix). Override with `VITE_API_BASE_URL` for local dev. */
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ??
-  "https://pickypaws-backend-api.win"
+  import.meta.env.VITE_API_BASE_URL ?? "https://pickypaws-backend-api.win"
 ).replace(/\/$/, "");
 
 // If we have an authentication error, we should redirect to the login page
@@ -123,6 +122,11 @@ export async function fetchRandomMeals(
       params.append("exclude_names", d.dish_name);
       params.append("exclude_dining_hall_ids", d.dining_hall_id);
     }
+  }
+  if (excludePairs?.length === 2 && count === 1) {
+    const winnerDishInfo: DishInfo = excludePairs[0];
+    params.append("winner_dining_hall_id", winnerDishInfo.dining_hall_id);
+    params.append("winner_name", winnerDishInfo.dish_name);
   }
 
   const res = await fetch(`${API_BASE_URL}/meals/random?${params.toString()}`, {

@@ -57,7 +57,7 @@ export function Layout() {
         <p className="mx-auto mt-3 max-w-3xl text-sm leading-relaxed text-zinc-600">
           For any feedback or bugs, contact:{" "}
           <span className="mx-auto max-w-3xl text-sm leading-relaxed text-uconn-navy">
-            pickypawsuconn@gmail.com
+            <a href="mailto:pickypawsuconn@gmail.com">pickypawsuconn@gmail.com</a>
           </span>
         </p>
       </footer>
