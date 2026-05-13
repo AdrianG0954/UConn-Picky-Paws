@@ -229,6 +229,11 @@ async def get_meal_availability(
     hall_name: str = Query(description="Dining hall name"),
 ) -> DishAvailabilityResponse:
     try:
+        AuthService().verify_login_jwt(credentials)
+    except HTTPException:
+        raise
+
+    try:
         hall_info = DiningHallEnum[hall_name.upper().replace(" ", "_")]
     except KeyError as exc:
         raise HTTPException(
@@ -237,12 +242,11 @@ async def get_meal_availability(
         ) from exc
 
     try:
-        # Verify the user is authenticated 
-        AuthService().verify_login_jwt(credentials)
-
         return await get_dish_availability(dish_name, hall_info)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(
             f"Error fetching weekly availability for {dish_name} in {hall_name}: {exc}",
