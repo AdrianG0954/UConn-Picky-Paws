@@ -102,12 +102,10 @@ async def get_random_meals_from_db(
 ) -> RandomMealsResponse:
     """
     Two behaviors:
-    - count == 2: return two random meals. Exclusion parameters are ignored.
-    - count == 1: return one random meal. Optionally exclude dishes
+    - count == 2: return two meals. Exclusion parameters are ignored.
+    - count == 1: return one meal. Optionally exclude dishes and requires a valid winner.
 
-    NOTE: 
-    - filter_dining_halls is to limit the results to only the halls the user specifies.
-    - exclude_names and exclude_dining_hall_ids are used to filter out specific dishes and are each the same length.
+    NOTE: exclude_names and exclude_dining_hall_ids are used to filter out specific dishes and are each the same length.
     """
     entries, bottom_15_subquery = None, None
     stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id).where(DiningHalls.name.in_(filter_dining_halls))
