@@ -91,7 +91,8 @@ class ConnectionManager:
         """
         Publish a snapshot of the leaderboard to all subscribers.
         """
-        subscribers: Set[WebSocket] = self.scope_subscriptions.get(scope, set())
+        # Get a copy of the subscribers set to send updates
+        subscribers: Set[WebSocket] = set(self.scope_subscriptions.get(scope, set()))
         if not subscribers:
             return
 
