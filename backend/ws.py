@@ -40,19 +40,19 @@ class ConnectionManager:
         """
         Disconnect a WebSocket from the connection manager.
         """
-        # gets the previous scope for a socket (can be none if first time connecting)
-        previous_scope = self.websocket_scopes.pop(websocket, None)
-        if previous_scope is None:
+        # gets the current scope for a socket (can be none if first time connecting)
+        prev_scope = self.websocket_scopes.pop(websocket, None)
+        if prev_scope is None:
             return
 
-        subscribers = self.scope_subscriptions.get(previous_scope)
+        subscribers = self.scope_subscriptions.get(prev_scope)
         if not subscribers:
             return
 
         # remove the socket from this scope's subscribers set
         subscribers.discard(websocket)
         if not subscribers:
-            del self.scope_subscriptions[previous_scope]
+            del self.scope_subscriptions[prev_scope]
 
 
     def subscribe_leaderboard(
@@ -63,7 +63,7 @@ class ConnectionManager:
         """
         Subscribe a WebSocket to a specific leaderboard scope.
         """
-        # disconnect from the previous scope (if applicable)
+        # disconnect from the prev scope (if applicable)
         self.disconnect(websocket)
 
         # adds socket to scope subscribers and keeps track of its current scope
@@ -91,14 +91,15 @@ class ConnectionManager:
         """
         Publish a snapshot of the leaderboard to all subscribers.
         """
-        subscribers = set(self.scope_subscriptions.get(scope, set()))
+        # Get a copy of the subscribers set to send updates
+        subscribers: Set[WebSocket] = set(self.scope_subscriptions.get(scope, set()))
         if not subscribers:
             return
 
         message = _build_snapshot_message(scope, entries)
 
         # send updated leaderboard to all subscribers
-        failed_websockets: list[WebSocket] = []
+        failed_websockets: List[WebSocket] = []
         for websocket in subscribers:
             try:
                 await websocket.send_json(message)
@@ -196,7 +197,7 @@ async def publish_leaderboard_snapshots(
         entries = await _get_scope_entries(db_session, scope)
         scope_entries_map[scope] = entries
 
-    # Publish snapshots concurrently (network operations are safe to parallelize)
+    # Publish snapshots concurrently
     publish_tasks = [
         manager.publish_snapshot(scope, entries)
         for scope, entries in scope_entries_map.items()

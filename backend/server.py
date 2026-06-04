@@ -49,7 +49,7 @@ _engine = create_async_engine(
     pool_pre_ping=True,
 )
 
-_db_session_maker = async_sessionmaker(bind=_engine, expire_on_commit=False)
+_db_session_maker = async_sessionmaker(bind=_engine, expire_on_commit=True)
 async def request_db_session():
     """Provide a transactional scope around a series of operations.""" 
     async with _db_session_maker() as session:
