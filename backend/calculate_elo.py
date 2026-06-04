@@ -29,6 +29,7 @@ class EloUpdateResponse(BaseModel):
 	winner_new_elo: float
 	loser_new_elo: float
 
+
 def calculate_win_probability(a: float, b: float) -> float:
 	"""
 	Calculates the win probability of player A against player B.
@@ -46,7 +47,6 @@ class CalculateElo:
 		"""
 		Calculates new ELO for the winning dish and the losing dish.
 		Returns (winner_new_elo, loser_new_elo).
-
 		"""
 
 		outcome = 0.5 if request.draw else 1.0
@@ -83,7 +83,7 @@ class CalculateElo:
 		Locks each dish row for duration of the transaction. 
 		We do this to prevent race conditions with updates to the same dish.
 		"""
-		# sort to prevent possible deadlock
+		# sort to prevent possible deadlock (always locking in same order)
 		ordered = sorted(pks)
 		out: Dict[Tuple, float] = {}
 		for dining_hall_id, name in ordered:

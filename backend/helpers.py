@@ -35,17 +35,18 @@ def _merge_exclusions(
 
     return out
 
+
 class PagesResponse(BaseModel):
     page_count: int
 
-class DishInfo(BaseModel):
-    """One dish for JSON APIs; fields align with the ``dishes`` composite PK (hall, name)."""
 
+class DishInfo(BaseModel):
     dish_name: str
     dining_hall_id: UUID
     dining_hall_name: str
     nutrition_info: Dict[str, Any]
     elo_rating: float
+
 
 class RandomMealsResponse(BaseModel):
     meals: List[DishInfo]
@@ -57,6 +58,7 @@ class LeaderboardEntry(BaseModel):
     dining_hall_name: str
     nutrition_info: Dict[str, Any]
     elo: float
+
 
 async def get_leaderboard_entries(
     db_session: AsyncSession,
@@ -100,12 +102,10 @@ async def get_random_meals_from_db(
 ) -> RandomMealsResponse:
     """
     Two behaviors:
+    - count == 2: return two meals. Exclusion parameters are ignored.
+    - count == 1: return one meal. Optionally exclude dishes and requires a valid winner.
 
-    - ``count == 2``: return two random meals. Exclusion parameters are ignored.
-    - ``count == 1``: return one random meal. Optionally exclude dishes by composite
-    key: parallel lists ``exclude_names``, ``exclude_dining_hall_ids`` (same length).
-
-    NOTE: filter_dining_halls is to limit the results to only the halls the user specifies.
+    NOTE: exclude_names and exclude_dining_hall_ids are used to filter out specific dishes and are each the same length.
     """
     entries, bottom_15_subquery = None, None
     stmt = select(Dishes, DiningHalls).join(DiningHalls, Dishes.dining_hall_id == DiningHalls.id).where(DiningHalls.name.in_(filter_dining_halls))
